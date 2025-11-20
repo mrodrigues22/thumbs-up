@@ -1,0 +1,6 @@
+@ThumbsUpApi_HostAddress = http://localhost:5039
+
+GET {{ThumbsUpApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
