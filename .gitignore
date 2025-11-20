@@ -88,3 +88,4 @@ wwwroot/uploads/
 # Logs
 logs/
 *.log
+ThumbsUpApi/wwwroot/uploads/*

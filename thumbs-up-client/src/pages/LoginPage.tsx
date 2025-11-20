@@ -20,7 +20,8 @@ export default function LoginPage() {
       const response = await authService.login({ email, password });
       setAuth(
         { email: response.email, firstName: response.firstName, lastName: response.lastName },
-        response.token
+        response.token,
+        response.expiresAt
       );
       navigate('/dashboard');
     } catch (err: any) {

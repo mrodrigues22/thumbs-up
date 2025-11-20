@@ -24,7 +24,8 @@ export default function RegisterPage() {
       const response = await authService.register(formData);
       setAuth(
         { email: response.email, firstName: response.firstName, lastName: response.lastName },
-        response.token
+        response.token,
+        response.expiresAt
       );
       navigate('/dashboard');
     } catch (err: any) {

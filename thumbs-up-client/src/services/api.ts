@@ -28,9 +28,15 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Only redirect to login if we're not already on a public page
+      const publicPages = ['/login', '/register', '/review'];
+      const isPublicPage = publicPages.some(page => window.location.pathname.startsWith(page));
+      
+      if (!isPublicPage) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

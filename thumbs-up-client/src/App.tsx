@@ -8,16 +8,31 @@ import CreateSubmissionPage from './pages/CreateSubmissionPage';
 import ClientReviewPage from './pages/ClientReviewPage';
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const { isAuthenticated, isLoading } = useAuthStore((state) => ({
+    isAuthenticated: state.isAuthenticated,
+    isLoading: state.isLoading,
+  }));
+  
+  if (isLoading) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>;
+  }
+  
   return isAuthenticated ? children : <Navigate to="/login" />;
 }
 
 function App() {
-  const loadAuth = useAuthStore((state) => state.loadAuth);
+  const { loadAuth, isLoading } = useAuthStore((state) => ({
+    loadAuth: state.loadAuth,
+    isLoading: state.isLoading,
+  }));
 
   useEffect(() => {
     loadAuth();
   }, [loadAuth]);
+
+  if (isLoading) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>;
+  }
 
   return (
     <BrowserRouter>
