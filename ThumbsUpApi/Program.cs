@@ -55,6 +55,15 @@ builder.Services.AddAuthorization();
 // Add HttpContextAccessor for accessing request information
 builder.Services.AddHttpContextAccessor();
 
+// Add Repositories
+builder.Services.AddScoped<ThumbsUpApi.Repositories.ISubmissionRepository, ThumbsUpApi.Repositories.SubmissionRepository>();
+builder.Services.AddScoped<ThumbsUpApi.Repositories.IReviewRepository, ThumbsUpApi.Repositories.ReviewRepository>();
+builder.Services.AddScoped<ThumbsUpApi.Repositories.IUserRepository, ThumbsUpApi.Repositories.UserRepository>();
+
+// Add Mappers
+builder.Services.AddScoped<ThumbsUpApi.Mappers.SubmissionMapper>();
+builder.Services.AddScoped<ThumbsUpApi.Mappers.ReviewMapper>();
+
 // Add Services
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IEmailService, MockEmailService>();

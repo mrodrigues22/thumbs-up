@@ -1,11 +1,11 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ThumbsUpApi.Data;
 using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Services;
+using ThumbsUpApi.Repositories;
+using ThumbsUpApi.Mappers;
 
 namespace ThumbsUpApi.Controllers;
 
@@ -14,24 +14,27 @@ namespace ThumbsUpApi.Controllers;
 [Authorize]
 public class SubmissionController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly ISubmissionRepository _submissionRepository;
     private readonly IFileStorageService _fileStorage;
     private readonly IEmailService _emailService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<SubmissionController> _logger;
+    private readonly SubmissionMapper _mapper;
     
     public SubmissionController(
-        ApplicationDbContext context,
+        ISubmissionRepository submissionRepository,
         IFileStorageService fileStorage,
         IEmailService emailService,
         IConfiguration configuration,
-        ILogger<SubmissionController> logger)
+        ILogger<SubmissionController> logger,
+        SubmissionMapper mapper)
     {
-        _context = context;
+        _submissionRepository = submissionRepository;
         _fileStorage = fileStorage;
         _emailService = emailService;
         _configuration = configuration;
         _logger = logger;
+        _mapper = mapper;
     }
     
     [HttpPost]
@@ -106,8 +109,7 @@ public class SubmissionController : ControllerBase
         
         submission.MediaFiles = mediaFiles;
         
-        _context.Submissions.Add(submission);
-        await _context.SaveChangesAsync();
+        await _submissionRepository.CreateAsync(submission);
         
         // Send email to client
         var reviewLink = $"{Request.Scheme}://{Request.Host}/review/{submission.AccessToken}";
@@ -120,7 +122,7 @@ public class SubmissionController : ControllerBase
         
         _logger.LogInformation("Submission {SubmissionId} created by user {UserId}", submission.Id, userId);
         
-        return Ok(MapToSubmissionResponse(submission));
+        return Ok(_mapper.ToResponse(submission));
     }
     
     [HttpGet]
@@ -130,15 +132,9 @@ public class SubmissionController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
         
-        var submissions = await _context.Submissions
-            .Include(s => s.MediaFiles)
-            .Include(s => s.Review)
-            .Include(s => s.CreatedBy)
-            .Where(s => s.CreatedById == userId)
-            .OrderByDescending(s => s.CreatedAt)
-            .ToListAsync();
+        var submissions = await _submissionRepository.GetAllByUserIdAsync(userId);
         
-        return Ok(submissions.Select(MapToSubmissionResponse));
+        return Ok(submissions.Select(s => _mapper.ToResponse(s)));
     }
     
     [HttpGet("{id}")]
@@ -148,16 +144,12 @@ public class SubmissionController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
         
-        var submission = await _context.Submissions
-            .Include(s => s.MediaFiles)
-            .Include(s => s.Review)
-            .Include(s => s.CreatedBy)
-            .FirstOrDefaultAsync(s => s.Id == id && s.CreatedById == userId);
+        var submission = await _submissionRepository.GetByIdWithIncludesAsync(id, userId);
         
         if (submission == null)
             return NotFound();
         
-        return Ok(MapToSubmissionResponse(submission));
+        return Ok(_mapper.ToResponse(submission));
     }
     
     [HttpDelete("{id}")]
@@ -167,9 +159,7 @@ public class SubmissionController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
         
-        var submission = await _context.Submissions
-            .Include(s => s.MediaFiles)
-            .FirstOrDefaultAsync(s => s.Id == id && s.CreatedById == userId);
+        var submission = await _submissionRepository.GetByIdWithIncludesAsync(id, userId);
         
         if (submission == null)
             return NotFound();
@@ -180,42 +170,11 @@ public class SubmissionController : ControllerBase
             await _fileStorage.DeleteAsync(file.FilePath);
         }
         
-        _context.Submissions.Remove(submission);
-        await _context.SaveChangesAsync();
+        await _submissionRepository.DeleteAsync(submission);
         
         _logger.LogInformation("Submission {SubmissionId} deleted by user {UserId}", id, userId);
         
         return NoContent();
-    }
-    
-    private SubmissionResponse MapToSubmissionResponse(Submission submission)
-    {
-        return new SubmissionResponse
-        {
-            Id = submission.Id,
-            ClientEmail = submission.ClientEmail,
-            AccessToken = submission.AccessToken,
-            Message = submission.Message,
-            Status = submission.Status,
-            CreatedAt = submission.CreatedAt,
-            ExpiresAt = submission.ExpiresAt,
-            MediaFiles = submission.MediaFiles.Select(m => new MediaFileResponse
-            {
-                Id = m.Id,
-                FileName = m.FileName,
-                FileUrl = _fileStorage.GetFileUrl(m.FilePath),
-                FileType = m.FileType,
-                FileSize = m.FileSize,
-                UploadedAt = m.UploadedAt
-            }).ToList(),
-            Review = submission.Review != null ? new ReviewResponse
-            {
-                Id = submission.Review.Id,
-                Status = submission.Review.Status,
-                Comment = submission.Review.Comment,
-                ReviewedAt = submission.Review.ReviewedAt
-            } : null
-        };
     }
     
     private bool IsImageFile(IFormFile file)

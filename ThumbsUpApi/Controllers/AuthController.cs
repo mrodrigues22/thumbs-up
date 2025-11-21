@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Models;
+using ThumbsUpApi.Repositories;
 
 namespace ThumbsUpApi.Controllers;
 
@@ -17,17 +18,20 @@ public class AuthController : ControllerBase
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
+    private readonly IUserRepository _userRepository;
     
     public AuthController(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         IConfiguration configuration,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        IUserRepository userRepository)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _configuration = configuration;
         _logger = logger;
+        _userRepository = userRepository;
     }
     
     [HttpPost("register")]

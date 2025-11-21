@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ThumbsUpApi.Data;
 using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Services;
+using ThumbsUpApi.Repositories;
+using ThumbsUpApi.Mappers;
 
 namespace ThumbsUpApi.Controllers;
 
@@ -11,21 +11,24 @@ namespace ThumbsUpApi.Controllers;
 [Route("api/[controller]")]
 public class ReviewController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
-    private readonly IFileStorageService _fileStorage;
+    private readonly ISubmissionRepository _submissionRepository;
+    private readonly IReviewRepository _reviewRepository;
     private readonly IEmailService _emailService;
     private readonly ILogger<ReviewController> _logger;
+    private readonly SubmissionMapper _submissionMapper;
     
     public ReviewController(
-        ApplicationDbContext context,
-        IFileStorageService fileStorage,
+        ISubmissionRepository submissionRepository,
+        IReviewRepository reviewRepository,
         IEmailService emailService,
-        ILogger<ReviewController> logger)
+        ILogger<ReviewController> logger,
+        SubmissionMapper submissionMapper)
     {
-        _context = context;
-        _fileStorage = fileStorage;
+        _submissionRepository = submissionRepository;
+        _reviewRepository = reviewRepository;
         _emailService = emailService;
         _logger = logger;
+        _submissionMapper = submissionMapper;
     }
     
     [HttpPost("validate")]
@@ -34,8 +37,7 @@ public class ReviewController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
         
-        var submission = await _context.Submissions
-            .FirstOrDefaultAsync(s => s.AccessToken == request.AccessToken);
+        var submission = await _submissionRepository.GetByTokenAsync(request.AccessToken);
         
         if (submission == null)
         {
@@ -46,7 +48,7 @@ public class ReviewController : ControllerBase
         if (submission.ExpiresAt < DateTime.UtcNow)
         {
             submission.Status = SubmissionStatus.Expired;
-            await _context.SaveChangesAsync();
+            await _submissionRepository.UpdateAsync(submission);
             return BadRequest(new { message = "This link has expired" });
         }
         
@@ -71,10 +73,7 @@ public class ReviewController : ControllerBase
         if (string.IsNullOrEmpty(password))
             return BadRequest(new { message = "Password is required" });
         
-        var submission = await _context.Submissions
-            .Include(s => s.MediaFiles)
-            .Include(s => s.Review)
-            .FirstOrDefaultAsync(s => s.AccessToken == token);
+        var submission = await _submissionRepository.GetByTokenWithIncludesAsync(token);
         
         if (submission == null)
         {
@@ -85,7 +84,7 @@ public class ReviewController : ControllerBase
         if (submission.ExpiresAt < DateTime.UtcNow)
         {
             submission.Status = SubmissionStatus.Expired;
-            await _context.SaveChangesAsync();
+            await _submissionRepository.UpdateAsync(submission);
             return BadRequest(new { message = "This link has expired" });
         }
         
@@ -95,34 +94,7 @@ public class ReviewController : ControllerBase
             return Unauthorized(new { message = "Invalid access password" });
         }
         
-        var response = new SubmissionResponse
-        {
-            Id = submission.Id,
-            ClientEmail = submission.ClientEmail,
-            AccessToken = submission.AccessToken,
-            Message = submission.Message,
-            Status = submission.Status,
-            CreatedAt = submission.CreatedAt,
-            ExpiresAt = submission.ExpiresAt,
-            MediaFiles = submission.MediaFiles.Select(m => new MediaFileResponse
-            {
-                Id = m.Id,
-                FileName = m.FileName,
-                FileUrl = _fileStorage.GetFileUrl(m.FilePath),
-                FileType = m.FileType,
-                FileSize = m.FileSize,
-                UploadedAt = m.UploadedAt
-            }).ToList(),
-            Review = submission.Review != null ? new ReviewResponse
-            {
-                Id = submission.Review.Id,
-                Status = submission.Review.Status,
-                Comment = submission.Review.Comment,
-                ReviewedAt = submission.Review.ReviewedAt
-            } : null
-        };
-        
-        return Ok(response);
+        return Ok(_submissionMapper.ToResponse(submission));
     }
     
     [HttpPost("submit")]
@@ -131,9 +103,7 @@ public class ReviewController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
         
-        var submission = await _context.Submissions
-            .Include(s => s.CreatedBy)
-            .FirstOrDefaultAsync(s => s.AccessToken == request.AccessToken);
+        var submission = await _submissionRepository.GetByTokenWithIncludesAsync(request.AccessToken);
         
         if (submission == null)
         {
@@ -144,7 +114,7 @@ public class ReviewController : ControllerBase
         if (submission.ExpiresAt < DateTime.UtcNow)
         {
             submission.Status = SubmissionStatus.Expired;
-            await _context.SaveChangesAsync();
+            await _submissionRepository.UpdateAsync(submission);
             return BadRequest(new { message = "This link has expired" });
         }
         
@@ -175,8 +145,8 @@ public class ReviewController : ControllerBase
             ? SubmissionStatus.Approved
             : SubmissionStatus.Rejected;
         
-        _context.Reviews.Add(review);
-        await _context.SaveChangesAsync();
+        await _reviewRepository.CreateAsync(review);
+        await _submissionRepository.UpdateAsync(submission);
         
         // Send notification to professional
         await _emailService.SendReviewNotificationAsync(
