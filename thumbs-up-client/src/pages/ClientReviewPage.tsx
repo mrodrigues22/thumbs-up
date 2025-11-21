@@ -223,7 +223,7 @@ export default function ClientReviewPage() {
         <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Review Media</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Review content</h1>
             <p className="mt-2 text-sm text-gray-600">
               Review the submitted files and provide your feedback
             </p>
@@ -247,7 +247,7 @@ export default function ClientReviewPage() {
           {/* Media Files Carousel */}
           <Card className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Media Files ({submission.mediaFiles.length})
+              Content
             </h2>
             
             {submission.mediaFiles.length === 1 ? (
@@ -267,11 +267,6 @@ export default function ClientReviewPage() {
                       className="absolute inset-0 w-full h-full object-contain"
                     />
                   )}
-                </div>
-                <div className="p-3 bg-white">
-                  <p className="text-sm text-gray-600 truncate" title={submission.mediaFiles[0].fileName}>
-                    {submission.mediaFiles[0].fileName}
-                  </p>
                 </div>
               </div>
             ) : (
@@ -325,12 +320,6 @@ export default function ClientReviewPage() {
                     </div>
                   </div>
                   
-                  {/* File name */}
-                  <div className="p-3 bg-white">
-                    <p className="text-sm text-gray-600 truncate" title={submission.mediaFiles[currentMediaIndex].fileName}>
-                      {submission.mediaFiles[currentMediaIndex].fileName}
-                    </p>
-                  </div>
                 </div>
 
                 {/* Dots indicator */}
