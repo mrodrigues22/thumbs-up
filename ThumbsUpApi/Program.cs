@@ -70,6 +70,8 @@ builder.Services.AddScoped<ThumbsUpApi.Mappers.ReviewMapper>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IEmailService, MockEmailService>();
 builder.Services.AddScoped<IImageCompressionService, ImageCompressionService>();
+builder.Services.AddHttpClient<ThumbsUpApi.Interfaces.IPaddleService, ThumbsUpApi.Services.PaddleService>();
+builder.Services.AddScoped<ThumbsUpApi.Interfaces.ISubscriptionLimitService, ThumbsUpApi.Services.SubscriptionLimitService>();
 
 // Add Controllers
 builder.Services.AddControllers();

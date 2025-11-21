@@ -3,12 +3,67 @@
  * Marketing landing page for new users to learn about the app
  */
 
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { initializePaddle, type Paddle } from '@paddle/paddle-js';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/common';
+import { subscriptionService } from '../services/subscriptionService';
 
 export default function LandingPage() {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
+  const { isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
+  const [paddle, setPaddle] = useState<Paddle | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Initialize Paddle
+    initializePaddle({
+      environment: import.meta.env.VITE_PADDLE_ENVIRONMENT || 'sandbox',
+      token: import.meta.env.VITE_PADDLE_CLIENT_TOKEN || '',
+    }).then((paddleInstance) => {
+      if (paddleInstance) {
+        setPaddle(paddleInstance);
+      }
+    });
+  }, []);
+
+  const handleGetStarted = async (tier: string, priceId: string) => {
+    // If user is not authenticated, redirect to register
+    if (!isAuthenticated) {
+      navigate('/register', { state: { selectedPlan: tier, priceId } });
+      return;
+    }
+
+    // If authenticated, open checkout
+    if (tier === 'Enterprise') {
+      window.location.href = 'mailto:sales@thumbsup.com?subject=Enterprise%20Plan%20Inquiry';
+      return;
+    }
+
+    setCheckoutLoading(tier);
+    try {
+      const { checkoutUrl } = await subscriptionService.createCheckout(
+        priceId,
+        `${window.location.origin}/subscription-success`
+      );
+
+      if (paddle) {
+        paddle.Checkout.open({
+          transactionId: checkoutUrl.split('/').pop() || '',
+        });
+      } else {
+        window.location.href = checkoutUrl;
+      }
+    } catch (error) {
+      console.error('Failed to create checkout:', error);
+      alert('Failed to start checkout. Please try again.');
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -208,7 +263,7 @@ export default function LandingPage() {
                 Sign Up
               </h3>
               <p className="text-gray-600 dark:text-gray-300">
-                Create your free account in seconds
+                Create your account and choose a plan
               </p>
             </div>
             <div className="text-center">
@@ -281,11 +336,14 @@ export default function LandingPage() {
                 <span className="text-gray-600 dark:text-gray-300">Email support</span>
               </li>
             </ul>
-            <Link to="/register">
-              <Button variant="primary" fullWidth>
-                Get Started
-              </Button>
-            </Link>
+            <Button 
+              variant="primary" 
+              fullWidth
+              onClick={() => handleGetStarted('Starter', 'pri_01test123starter')}
+              disabled={checkoutLoading === 'Starter'}
+            >
+              {checkoutLoading === 'Starter' ? 'Loading...' : 'Get Started'}
+            </Button>
           </div>
 
           {/* Pro Plan */}
@@ -323,11 +381,14 @@ export default function LandingPage() {
                 <span className="text-gray-600 dark:text-gray-300">Custom branding</span>
               </li>
             </ul>
-            <Link to="/register">
-              <Button variant="primary" fullWidth>
-                Get Started
-              </Button>
-            </Link>
+            <Button 
+              variant="primary" 
+              fullWidth
+              onClick={() => handleGetStarted('Pro', 'pri_01test123pro')}
+              disabled={checkoutLoading === 'Pro'}
+            >
+              {checkoutLoading === 'Pro' ? 'Loading...' : 'Get Started'}
+            </Button>
           </div>
 
           {/* Enterprise Plan */}
@@ -358,11 +419,14 @@ export default function LandingPage() {
                 <span className="text-gray-600 dark:text-gray-300">Dedicated support</span>
               </li>
             </ul>
-            <Link to="/register">
-              <Button variant="secondary" fullWidth>
-                Contact Sales
-              </Button>
-            </Link>
+            <Button 
+              variant="secondary" 
+              fullWidth
+              onClick={() => handleGetStarted('Enterprise', 'pri_01test123enterprise')}
+              disabled={checkoutLoading === 'Enterprise'}
+            >
+              {checkoutLoading === 'Enterprise' ? 'Loading...' : 'Contact Sales'}
+            </Button>
           </div>
         </div>
       </section>

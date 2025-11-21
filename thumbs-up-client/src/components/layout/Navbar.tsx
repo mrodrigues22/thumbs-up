@@ -74,6 +74,16 @@ export const Navbar: React.FC = () => {
               >
                 New Submission
               </Link>
+              <Link
+                to="/billing"
+                className={`transition-colors font-medium ${
+                  location.pathname === '/billing'
+                    ? 'text-primary'
+                    : 'text-gray-700 dark:text-gray-300 hover:text-primary'
+                }`}
+              >
+                Billing
+              </Link>
             </div>
           )}
 
@@ -207,6 +217,17 @@ export const Navbar: React.FC = () => {
                     }`}
                   >
                     New Submission
+                  </Link>
+                  <Link
+                    to="/billing"
+                    onClick={handleNavClick}
+                    className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                      location.pathname === '/billing'
+                        ? 'bg-primary text-white'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    Billing
                   </Link>
                 </>
               )}

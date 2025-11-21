@@ -21,6 +21,7 @@ public class SubmissionController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly ILogger<SubmissionController> _logger;
     private readonly SubmissionMapper _mapper;
+    private readonly ThumbsUpApi.Interfaces.ISubscriptionLimitService _limitService;
     
     public SubmissionController(
         ISubmissionRepository submissionRepository,
@@ -29,7 +30,8 @@ public class SubmissionController : ControllerBase
         IEmailService emailService,
         IConfiguration configuration,
         ILogger<SubmissionController> logger,
-        SubmissionMapper mapper)
+        SubmissionMapper mapper,
+        ThumbsUpApi.Interfaces.ISubscriptionLimitService limitService)
     {
         _submissionRepository = submissionRepository;
         _clientRepository = clientRepository;
@@ -38,6 +40,7 @@ public class SubmissionController : ControllerBase
         _configuration = configuration;
         _logger = logger;
         _mapper = mapper;
+        _limitService = limitService;
     }
     
     [HttpPost]
@@ -49,6 +52,19 @@ public class SubmissionController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
+        
+        // Check subscription limits
+        if (!await _limitService.CanCreateSubmissionAsync(userId))
+        {
+            return StatusCode(403, new { message = "Submission limit reached for your subscription tier. Please upgrade to create more submissions." });
+        }
+        
+        // Calculate total file size for storage check
+        var totalFileSize = request.Files?.Sum(f => f.Length) ?? 0;
+        if (!await _limitService.CanUploadFileAsync(userId, totalFileSize))
+        {
+            return StatusCode(403, new { message = "Storage limit exceeded for your subscription tier. Please upgrade to get more storage." });
+        }
         
         // Validate that either ClientId or ClientEmail is provided
         if (!request.ClientId.HasValue && string.IsNullOrWhiteSpace(request.ClientEmail))
@@ -184,6 +200,10 @@ public class SubmissionController : ControllerBase
         
         await _submissionRepository.CreateAsync(submission);
         
+        // Update usage counters
+        await _limitService.IncrementSubmissionCountAsync(userId);
+        await _limitService.IncrementStorageUsageAsync(userId, totalFileSize);
+        
         // Send email to client
         var reviewLink = $"{Request.Scheme}://{Request.Host}/review/{submission.AccessToken}";
         await _emailService.SendReviewLinkAsync(
@@ -240,6 +260,9 @@ public class SubmissionController : ControllerBase
         if (submission == null)
             return NotFound();
         
+        // Calculate total storage being freed
+        var totalFileSize = submission.MediaFiles.Sum(f => f.FileSize);
+        
         // Delete files from storage
         foreach (var file in submission.MediaFiles)
         {
@@ -247,6 +270,9 @@ public class SubmissionController : ControllerBase
         }
         
         await _submissionRepository.DeleteAsync(submission);
+        
+        // Update storage usage
+        await _limitService.DecrementStorageUsageAsync(userId, totalFileSize);
         
         _logger.LogInformation("Submission {SubmissionId} deleted by user {UserId}", id, userId);
         
