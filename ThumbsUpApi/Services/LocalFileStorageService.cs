@@ -53,6 +53,32 @@ public class LocalFileStorageService : IFileStorageService
         // Return relative path
         return Path.Combine(folder, uniqueFileName).Replace("\\", "/");
     }
+
+    public async Task<string> UploadFromStreamAsync(Stream stream, string fileName, string folder = "uploads")
+    {
+        if (stream == null || stream.Length == 0)
+            throw new ArgumentException("Stream is empty", nameof(stream));
+        
+        // Create subfolder if specified
+        var targetPath = Path.Combine(_uploadPath, folder);
+        if (!Directory.Exists(targetPath))
+        {
+            Directory.CreateDirectory(targetPath);
+        }
+        
+        // Use provided filename or generate unique one
+        var uniqueFileName = fileName;
+        var fullPath = Path.Combine(targetPath, uniqueFileName);
+        
+        // Save file from stream
+        using (var fileStream = new FileStream(fullPath, FileMode.Create))
+        {
+            await stream.CopyToAsync(fileStream);
+        }
+        
+        // Return relative path
+        return Path.Combine(folder, uniqueFileName).Replace("\\", "/");
+    }
     
     public Task<bool> DeleteAsync(string filePath)
     {

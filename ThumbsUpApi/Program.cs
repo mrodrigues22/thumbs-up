@@ -69,6 +69,7 @@ builder.Services.AddScoped<ThumbsUpApi.Mappers.ReviewMapper>();
 // Add Services
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IEmailService, MockEmailService>();
+builder.Services.AddScoped<IImageCompressionService, ImageCompressionService>();
 
 // Add Controllers
 builder.Services.AddControllers();

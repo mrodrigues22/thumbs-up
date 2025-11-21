@@ -22,6 +22,7 @@ public class AuthController : ControllerBase
     private readonly ILogger<AuthController> _logger;
     private readonly IUserRepository _userRepository;
     private readonly IFileStorageService _fileStorageService;
+    private readonly IImageCompressionService _imageCompressionService;
     
     public AuthController(
         UserManager<ApplicationUser> userManager,
@@ -29,7 +30,8 @@ public class AuthController : ControllerBase
         IConfiguration configuration,
         ILogger<AuthController> logger,
         IUserRepository userRepository,
-        IFileStorageService fileStorageService)
+        IFileStorageService fileStorageService,
+        IImageCompressionService imageCompressionService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -37,6 +39,7 @@ public class AuthController : ControllerBase
         _logger = logger;
         _userRepository = userRepository;
         _fileStorageService = fileStorageService;
+        _imageCompressionService = imageCompressionService;
     }
     
     [HttpPost("register")]
@@ -183,14 +186,14 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "No file uploaded" });
 
         // Validate file type
-        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
         var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(fileExtension))
             return BadRequest(new { message = "Invalid file type. Only images are allowed." });
 
-        // Validate file size (max 5MB)
-        if (file.Length > 5 * 1024 * 1024)
-            return BadRequest(new { message = "File size exceeds 5MB limit" });
+        // Validate file size (max 10MB before compression)
+        if (file.Length > 10 * 1024 * 1024)
+            return BadRequest(new { message = "File size exceeds 10MB limit" });
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -200,22 +203,37 @@ public class AuthController : ControllerBase
         if (user == null)
             return NotFound(new { message = "User not found" });
 
-        // Delete old profile picture if exists
-        if (!string.IsNullOrEmpty(user.ProfilePictureUrl))
+        try
         {
-            await _fileStorageService.DeleteAsync(user.ProfilePictureUrl);
+            // Delete old profile picture if exists
+            if (!string.IsNullOrEmpty(user.ProfilePictureUrl))
+            {
+                await _fileStorageService.DeleteAsync(user.ProfilePictureUrl);
+            }
+
+            // Compress the image to WebP format (800x800 max, 85% quality)
+            using var originalStream = file.OpenReadStream();
+            using var compressedStream = await _imageCompressionService.CompressImageAsync(originalStream, 800, 800, 85);
+
+            // Generate unique filename with .webp extension
+            var uniqueFileName = $"{Guid.NewGuid()}.webp";
+
+            // Upload compressed image
+            var filePath = await _fileStorageService.UploadFromStreamAsync(compressedStream, uniqueFileName, "profile-pictures");
+            var fileUrl = _fileStorageService.GetFileUrl(filePath);
+
+            // Update user's profile picture URL
+            user.ProfilePictureUrl = fileUrl;
+            await _userRepository.UpdateAsync(user);
+
+            _logger.LogInformation("User {UserId} updated their profile picture (compressed to WebP)", userId);
+
+            return Ok(new { profilePictureUrl = fileUrl });
         }
-
-        // Upload new profile picture
-        var filePath = await _fileStorageService.UploadAsync(file, "profile-pictures");
-        var fileUrl = _fileStorageService.GetFileUrl(filePath);
-
-        // Update user's profile picture URL
-        user.ProfilePictureUrl = fileUrl;
-        await _userRepository.UpdateAsync(user);
-
-        _logger.LogInformation("User {UserId} updated their profile picture", userId);
-
-        return Ok(new { profilePictureUrl = fileUrl });
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing profile picture for user {UserId}", userId);
+            return StatusCode(500, new { message = "Failed to process image" });
+        }
     }
 }
