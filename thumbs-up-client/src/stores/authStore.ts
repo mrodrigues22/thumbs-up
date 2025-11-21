@@ -8,6 +8,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   setAuth: (user: User, token: string, expiresAt: string) => void;
+  updateUser: (user: Partial<User>) => void;
   clearAuth: () => void;
   loadAuth: () => void;
 }
@@ -24,6 +25,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('tokenExpiresAt', expiresAt);
     localStorage.setItem('user', JSON.stringify(user));
     set({ user, token, tokenExpiresAt: expiresAt, isAuthenticated: true, isLoading: false });
+  },
+
+  updateUser: (updatedFields) => {
+    set((state) => {
+      if (!state.user) return state;
+      const updatedUser = { ...state.user, ...updatedFields };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return { user: updatedUser };
+    });
   },
 
   clearAuth: () => {

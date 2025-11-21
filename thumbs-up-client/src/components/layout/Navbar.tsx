@@ -72,9 +72,12 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
               <>
-                <span className="text-sm text-gray-600">
+                <Link 
+                  to="/profile" 
+                  className="text-sm text-gray-600 hover:text-primary transition-colors"
+                >
                   {user?.firstName || user?.email}
-                </span>
+                </Link>
                 <Button onClick={handleLogout} variant="ghost" size="small">
                   Logout
                 </Button>

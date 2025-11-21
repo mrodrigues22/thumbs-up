@@ -36,3 +36,18 @@ public class AuthResponse
     public string? CompanyName { get; set; }
     public DateTime ExpiresAt { get; set; }
 }
+
+public class UpdateProfileRequest
+{
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? CompanyName { get; set; }
+}
+
+public class UserProfileResponse
+{
+    public string Email { get; set; } = string.Empty;
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? CompanyName { get; set; }
+}

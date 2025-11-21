@@ -15,6 +15,7 @@ interface UseAuthReturn {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, firstName?: string, lastName?: string, companyName?: string) => Promise<void>;
   logout: () => void;
+  updateUser: (user: Partial<User>) => void;
   hasRole: (role: string) => boolean;
 }
 
@@ -28,6 +29,7 @@ export const useAuth = (): UseAuthReturn => {
     isAuthenticated,
     isLoading,
     setAuth,
+    updateUser,
     clearAuth,
   } = useAuthStore();
 
@@ -87,6 +89,7 @@ export const useAuth = (): UseAuthReturn => {
     login,
     register,
     logout,
+    updateUser,
     hasRole,
   };
 };

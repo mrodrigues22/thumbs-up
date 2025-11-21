@@ -67,6 +67,19 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface UpdateProfileRequest {
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+}
+
+export interface UserProfileResponse {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+}
+
 // ===== Media File Types =====
 export interface MediaFileResponse {
   id: string;

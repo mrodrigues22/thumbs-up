@@ -134,4 +134,36 @@ public class AuthController : ControllerBase
     {
         return _configuration.GetValue<int>("Jwt:ExpirationHours", 24);
     }
+
+    [HttpPut("profile")]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+            return NotFound(new { message = "User not found" });
+
+        // Update user properties
+        user.FirstName = request.FirstName;
+        user.LastName = request.LastName;
+        user.CompanyName = request.CompanyName;
+
+        await _userRepository.UpdateAsync(user);
+
+        _logger.LogInformation("User {UserId} updated their profile", userId);
+
+        return Ok(new UserProfileResponse
+        {
+            Email = user.Email!,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            CompanyName = user.CompanyName
+        });
+    }
 }
