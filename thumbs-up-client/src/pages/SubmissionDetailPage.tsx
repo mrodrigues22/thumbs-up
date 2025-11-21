@@ -8,6 +8,7 @@ import { Layout } from '../components/layout';
 import { Card, Button, LoadingSpinner, ErrorMessage } from '../components/common';
 import { SubmissionStatusBadge, MediaGallery } from '../components/submissions';
 import { useSubmissionDetail, useDeleteSubmission } from '../hooks/submissions';
+import { toast } from 'react-toastify';
 
 export default function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,7 +35,14 @@ export default function SubmissionDetailPage() {
     if (submission) {
       const reviewLink = `${window.location.origin}/review/${submission.accessToken}`;
       navigator.clipboard.writeText(reviewLink);
-      // Toast notification would be shown by the hook
+      toast.success('Link copied to clipboard!');
+    }
+  };
+
+  const handleCopyPassword = () => {
+    if (submission?.accessPassword) {
+      navigator.clipboard.writeText(submission.accessPassword);
+      toast.success('Password copied to clipboard!');
     }
   };
 
@@ -188,24 +196,66 @@ export default function SubmissionDetailPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Review Link
                   </label>
-                  <input
-                    type="text"
-                    readOnly
-                    value={`${window.location.origin}/review/${submission.accessToken}`}
-                    className="input-field text-xs"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      readOnly
+                      value={`${window.location.origin}/review/${submission.accessToken}`}
+                      className="input-field text-xs pr-10"
+                    />
+                    <button
+                      onClick={handleCopyLink}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      title="Copy to clipboard"
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 {submission.accessPassword && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Access Password
                     </label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={submission.accessPassword}
-                      className="input-field font-mono"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        readOnly
+                        value={submission.accessPassword}
+                        className="input-field font-mono pr-10"
+                      />
+                      <button
+                        onClick={handleCopyPassword}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        title="Copy to clipboard"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 )}
                 <p className="text-xs text-gray-500">
