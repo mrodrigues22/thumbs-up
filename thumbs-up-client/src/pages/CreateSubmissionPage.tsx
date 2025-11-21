@@ -58,19 +58,19 @@ export default function CreateSubmissionPage() {
     setFiles([]);
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
   };
 
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragLeave = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -436,8 +436,9 @@ export default function CreateSubmissionPage() {
                   Upload Files
                   <span className="text-red-500 ml-1">*</span>
                 </label>
-                <div 
-                  className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-colors ${
+                <label 
+                  htmlFor="file-upload"
+                  className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-colors cursor-pointer ${
                     isDragging 
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
                       : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
@@ -446,7 +447,7 @@ export default function CreateSubmissionPage() {
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                 >
-                  <div className="space-y-1 text-center">
+                  <div className="space-y-1 text-center pointer-events-none">
                     <svg
                       className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
                       stroke="currentColor"
@@ -461,32 +462,27 @@ export default function CreateSubmissionPage() {
                       />
                     </svg>
                     <div className="flex text-sm text-gray-600 dark:text-gray-400">
-                      <label
-                        htmlFor="file-upload"
-                        className="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
-                      >
-                        <span>Upload files</span>
-                        <input
-                          id="file-upload"
-                          name="file-upload"
-                          type="file"
-                          onChange={handleFileChange}
-                          multiple
-                          accept="image/*,video/*"
-                          className="sr-only"
-                        />
-                      </label>
+                      <span className="font-medium text-blue-600 dark:text-blue-400">Upload files</span>
                       <p className="pl-1">or drag and drop</p>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Images or videos (same type only)
                     </p>
                   </div>
-                </div>
+                  <input
+                    id="file-upload"
+                    name="file-upload"
+                    type="file"
+                    onChange={handleFileChange}
+                    multiple
+                    accept="image/*,video/*"
+                    className="sr-only"
+                  />
+                </label>
                 {files.length > 0 && (
-                  <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                  <div className="mt-3 p-3 bg-gray-50 rounded-md  dark:bg-gray-900">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium text-gray-700">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {files.length} file(s) selected:
                       </p>
                       <button
@@ -497,19 +493,39 @@ export default function CreateSubmissionPage() {
                         Clear all
                       </button>
                     </div>
-                    <ul className="text-sm text-gray-600 space-y-2">
+                    <ul className="text-sm text-gray-600 dark:text-gray-400 dark:bg-gray-900 space-y-2">
                       {files.map((file, index) => (
-                        <li key={index} className="flex items-center justify-between bg-white p-2 rounded border border-gray-200">
-                          <div className="flex items-center min-w-0 flex-1">
-                            <svg className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                            <span className="truncate">{file.name}</span>
+                        <li key={index} className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center min-w-0 flex-1 gap-3">
+                            {file.type.startsWith('image/') ? (
+                              <img
+                                src={URL.createObjectURL(file)}
+                                alt={file.name}
+                                className="w-12 h-12 object-cover rounded flex-shrink-0"
+                              />
+                            ) : file.type.startsWith('video/') ? (
+                              <video
+                                src={URL.createObjectURL(file)}
+                                className="w-12 h-12 object-cover rounded flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center flex-shrink-0">
+                                <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-gray-900 dark:text-gray-100 font-medium">{file.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {(file.size / 1024 / 1024).toFixed(2)} MB
+                              </p>
+                            </div>
                           </div>
                           <button
                             type="button"
                             onClick={() => removeFile(index)}
-                            className="ml-2 text-red-500 hover:text-red-700 flex-shrink-0"
+                            className="ml-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex-shrink-0"
                             title="Remove file"
                           >
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
