@@ -41,10 +41,11 @@ export default function LoginPage() {
         <div className="max-w-md w-full">
           {/* Header */}
           <div className="text-center mb-8">
-            <span className="text-6xl">👍</span>
-            <h2 className="mt-4 text-3xl font-extrabold text-gray-900">
-              Thumbs Up
-            </h2>
+            <img 
+                            src="/logo.svg" 
+                            className="h-12 cursor-pointer mx-auto" 
+                            alt="Logo" 
+                        />
             <p className="mt-2 text-sm text-gray-600">
               Sign in to your account
             </p>
