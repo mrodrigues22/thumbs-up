@@ -67,6 +67,7 @@ public class AuthController : ControllerBase
             Email = user.Email!,
             FirstName = user.FirstName,
             LastName = user.LastName,
+            CompanyName = user.CompanyName,
             ExpiresAt = DateTime.UtcNow.AddHours(GetTokenExpirationHours())
         });
     }
