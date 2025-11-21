@@ -5,6 +5,7 @@ using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
 using ThumbsUpApi.Mappers;
+using ThumbsUpApi.Services;
 
 namespace ThumbsUpApi.Controllers;
 
@@ -16,15 +17,24 @@ public class ClientController : ControllerBase
     private readonly IClientRepository _clientRepository;
     private readonly ISubmissionRepository _submissionRepository;
     private readonly SubmissionMapper _submissionMapper;
+    private readonly IFileStorageService _fileStorageService;
+    private readonly IImageCompressionService _imageCompressionService;
+    private readonly ILogger<ClientController> _logger;
 
     public ClientController(
         IClientRepository clientRepository,
         ISubmissionRepository submissionRepository,
-        SubmissionMapper submissionMapper)
+        SubmissionMapper submissionMapper,
+        IFileStorageService fileStorageService,
+        IImageCompressionService imageCompressionService,
+        ILogger<ClientController> logger)
     {
         _clientRepository = clientRepository;
         _submissionRepository = submissionRepository;
         _submissionMapper = submissionMapper;
+        _fileStorageService = fileStorageService;
+        _imageCompressionService = imageCompressionService;
+        _logger = logger;
     }
 
     private string GetUserId()
@@ -48,6 +58,7 @@ public class ClientController : ControllerBase
                 Email = client.Email,
                 Name = client.Name,
                 CompanyName = client.CompanyName,
+                ProfilePictureUrl = client.ProfilePictureUrl,
                 CreatedAt = client.CreatedAt,
                 LastUsedAt = client.LastUsedAt,
                 SubmissionCount = submissionCount
@@ -76,6 +87,7 @@ public class ClientController : ControllerBase
             Email = client.Email,
             Name = client.Name,
             CompanyName = client.CompanyName,
+            ProfilePictureUrl = client.ProfilePictureUrl,
             CreatedAt = client.CreatedAt,
             LastUsedAt = client.LastUsedAt,
             SubmissionCount = submissionCount
@@ -112,6 +124,7 @@ public class ClientController : ControllerBase
             Email = client.Email,
             Name = client.Name,
             CompanyName = client.CompanyName,
+            ProfilePictureUrl = client.ProfilePictureUrl,
             CreatedAt = client.CreatedAt,
             LastUsedAt = client.LastUsedAt,
             SubmissionCount = 0
@@ -150,6 +163,7 @@ public class ClientController : ControllerBase
             Email = client.Email,
             Name = client.Name,
             CompanyName = client.CompanyName,
+            ProfilePictureUrl = client.ProfilePictureUrl,
             CreatedAt = client.CreatedAt,
             LastUsedAt = client.LastUsedAt,
             SubmissionCount = submissionCount
@@ -170,6 +184,64 @@ public class ClientController : ControllerBase
         var submissions = await _submissionRepository.GetByClientIdAsync(id, userId);
         
         return Ok(submissions.Select(s => _submissionMapper.ToResponse(s)));
+    }
+
+    [HttpPost("{id}/picture")]
+    public async Task<IActionResult> UploadClientProfilePicture(Guid id, IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "No file uploaded" });
+
+        // Validate file type
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
+        var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(fileExtension))
+            return BadRequest(new { message = "Invalid file type. Only images are allowed." });
+
+        // Validate file size (max 10MB before compression)
+        if (file.Length > 10 * 1024 * 1024)
+            return BadRequest(new { message = "File size exceeds 10MB limit" });
+
+        var userId = GetUserId();
+        var client = await _clientRepository.GetByIdAsync(id, userId);
+        
+        if (client == null)
+        {
+            return NotFound(new { message = "Client not found" });
+        }
+
+        try
+        {
+            // Delete old profile picture if exists
+            if (!string.IsNullOrEmpty(client.ProfilePictureUrl))
+            {
+                await _fileStorageService.DeleteAsync(client.ProfilePictureUrl);
+            }
+
+            // Compress the image to WebP format (800x800 max, 85% quality)
+            using var originalStream = file.OpenReadStream();
+            using var compressedStream = await _imageCompressionService.CompressImageAsync(originalStream, 800, 800, 85);
+
+            // Generate unique filename with .webp extension
+            var uniqueFileName = $"{Guid.NewGuid()}.webp";
+
+            // Upload compressed image
+            var filePath = await _fileStorageService.UploadFromStreamAsync(compressedStream, uniqueFileName, "client-pictures");
+            var fileUrl = _fileStorageService.GetFileUrl(filePath);
+
+            // Update client's profile picture URL
+            client.ProfilePictureUrl = fileUrl;
+            await _clientRepository.UpdateAsync(client);
+
+            _logger.LogInformation("Client {ClientId} profile picture updated (compressed to WebP)", id);
+
+            return Ok(new { profilePictureUrl = fileUrl });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing profile picture for client {ClientId}", id);
+            return StatusCode(500, new { message = "Failed to process image" });
+        }
     }
 
     [HttpDelete("{id}")]

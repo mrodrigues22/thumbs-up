@@ -8,6 +8,7 @@ public class ClientResponse
     public string Email { get; set; } = string.Empty;
     public string? Name { get; set; }
     public string? CompanyName { get; set; }
+    public string? ProfilePictureUrl { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastUsedAt { get; set; }
     public int SubmissionCount { get; set; }

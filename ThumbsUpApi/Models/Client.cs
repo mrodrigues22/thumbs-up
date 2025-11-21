@@ -17,6 +17,8 @@ public class Client
     
     public string? CompanyName { get; set; }
     
+    public string? ProfilePictureUrl { get; set; }
+    
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
     public DateTime? LastUsedAt { get; set; }

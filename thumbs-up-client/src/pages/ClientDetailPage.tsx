@@ -3,12 +3,13 @@
  * View and manage a single client's information
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/layout';
 import { clientService } from '../services/clientService';
 import { submissionService } from '../services/submissionService';
-import { Button, Card, LoadingSpinner, ErrorMessage, Modal, Input } from '../components/common';
+import { Button, Card, LoadingSpinner, ErrorMessage, Modal, Input, ImageCropper } from '../components/common';
+import { toast } from 'react-toastify';
 import type { Client, UpdateClientRequest, SubmissionResponse, SubmissionStatus } from '../shared/types';
 
 export default function ClientDetailPage() {
@@ -26,6 +27,9 @@ export default function ClientDetailPage() {
     companyName: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (id) {
@@ -121,6 +125,69 @@ export default function ClientDetailPage() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (10MB before cropping)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
+      return;
+    }
+
+    // Read file and show cropper
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageToCrop(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset file input
+    e.target.value = '';
+  };
+
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
+    if (!client) return;
+    
+    setImageToCrop(null);
+    setUploadingPicture(true);
+    setError(null);
+
+    try {
+      // Convert blob to file
+      const file = new File([croppedImageBlob], 'client-picture.jpg', { type: 'image/jpeg' });
+      
+      const response = await clientService.uploadClientProfilePicture(client.id, file);
+      
+      // Update client data
+      setClient({
+        ...client,
+        profilePictureUrl: response.profilePictureUrl,
+      });
+      
+      toast.success('Profile picture updated!');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to upload profile picture';
+      toast.error(errorMessage);
+    } finally {
+      setUploadingPicture(false);
+    }
+  };
+
+  const handleCropCancel = () => {
+    setImageToCrop(null);
+  };
+
+  const handlePictureClick = () => {
+    fileInputRef.current?.click();
+  };
+
   const handleCreateSubmission = () => {
     navigate(`/submissions/new?clientId=${id}`);
   };
@@ -195,10 +262,29 @@ export default function ClientDetailPage() {
 
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center">
-                <span className="text-primary-600 font-semibold text-2xl">
-                  {(client.name || client.email).charAt(0).toUpperCase()}
-                </span>
+              <div 
+                onClick={handlePictureClick}
+                className="relative w-16 h-16 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                {uploadingPicture && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                  </div>
+                )}
+                {client.profilePictureUrl ? (
+                  <img 
+                    src={client.profilePictureUrl} 
+                    alt={client.name || client.email} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-primary-600 font-semibold text-2xl">
+                    {(client.name || client.email).charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 hover:bg-opacity-30 transition-all">
+                  <span className="text-white text-xs opacity-0 hover:opacity-100">Change</span>
+                </div>
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
@@ -209,6 +295,13 @@ export default function ClientDetailPage() {
                 )}
               </div>
             </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="hidden"
+            />
           </div>
         </div>
 
@@ -470,6 +563,51 @@ export default function ClientDetailPage() {
           title="Edit Client"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Profile Picture Section */}
+            <div className="mb-6 flex flex-col items-center">
+              <div className="mb-4">
+                <div 
+                  onClick={handlePictureClick}
+                  className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                  {uploadingPicture && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                    </div>
+                  )}
+                  {client?.profilePictureUrl ? (
+                    <img 
+                      src={client.profilePictureUrl} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl">
+                      {client?.name?.[0]?.toUpperCase() || client?.email?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 hover:bg-opacity-30 transition-all">
+                    <span className="text-white text-sm opacity-0 hover:opacity-100">Change</span>
+                  </div>
+                </div>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={handlePictureClick}
+                className="text-sm text-primary hover:text-primary-dark font-medium"
+              >
+                Upload Profile Picture
+              </button>
+              <p className="text-xs text-gray-500 mt-1">JPG, PNG or GIF (max 10MB)</p>
+            </div>
+
             <Input
               label="Email"
               name="email"
@@ -513,6 +651,17 @@ export default function ClientDetailPage() {
             </div>
           </form>
         </Modal>
+
+        {/* Image Cropper Modal */}
+        {imageToCrop && (
+          <ImageCropper
+            image={imageToCrop}
+            onCropComplete={handleCropComplete}
+            onCancel={handleCropCancel}
+            aspectRatio={1}
+            cropShape="round"
+          />
+        )}
       </div>
     </Layout>
   );

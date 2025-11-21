@@ -130,6 +130,7 @@ export interface Client {
   email: string;
   name?: string;
   companyName?: string;
+  profilePictureUrl?: string;
   createdAt: string;
   lastUsedAt?: string;
   submissionCount: number;

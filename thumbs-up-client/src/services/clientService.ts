@@ -30,4 +30,16 @@ export const clientService = {
   async deleteClient(id: string): Promise<void> {
     await api.delete(`/client/${id}`);
   },
+
+  // Upload a client profile picture
+  async uploadClientProfilePicture(id: string, file: File): Promise<{ profilePictureUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<{ profilePictureUrl: string }>(`/client/${id}/picture`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };
