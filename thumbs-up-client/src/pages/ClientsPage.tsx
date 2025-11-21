@@ -167,7 +167,7 @@ export default function ClientsPage() {
               placeholder="Search clients by email, name, or company..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 border-0 focus:ring-0 text-sm"
+              className="flex-1 border-0 focus:ring-0 text-sm bg-transparent placeholder-gray-400"
             />
           </div>
         </Card>

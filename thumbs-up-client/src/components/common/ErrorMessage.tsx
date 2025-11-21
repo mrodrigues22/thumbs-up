@@ -14,11 +14,11 @@ export const ErrorMessage: React.FC<ErrorProps> = ({
   const errorMessage = formatApiError(error);
 
   return (
-    <div className={`bg-red-50 border border-red-200 rounded-lg p-4 ${className}`}>
+    <div className={`bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 ${className}`}>
       <div className="flex items-start">
         <div className="flex-shrink-0">
           <svg
-            className="w-5 h-5 text-red-600"
+            className="w-5 h-5 text-red-600 dark:text-red-400"
             fill="currentColor"
             viewBox="0 0 20 20"
           >
@@ -30,12 +30,12 @@ export const ErrorMessage: React.FC<ErrorProps> = ({
           </svg>
         </div>
         <div className="ml-3 flex-1">
-          <h3 className="text-sm font-medium text-red-800">Error</h3>
-          <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+          <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Error</h3>
+          <p className="mt-1 text-sm text-red-700 dark:text-red-400">{errorMessage}</p>
           {onRetry && (
             <button
               onClick={onRetry}
-              className="mt-3 text-sm font-medium text-red-600 hover:text-red-500"
+              className="mt-3 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300"
             >
               Try again
             </button>

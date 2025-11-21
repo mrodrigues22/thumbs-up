@@ -95,7 +95,7 @@ export default function SubmissionDetailPage() {
           </button>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Submission Details</h1>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Submission Details</h1>
             </div>
             <SubmissionStatusBadge status={submission.status} />
           </div>
@@ -136,24 +136,24 @@ export default function SubmissionDetailPage() {
             <Card title="Submission Information">
               <dl className="grid grid-cols-1 gap-4">
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Client Email</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{submission.clientEmail}</dd>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-100">Client Email</dt>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{submission.clientEmail}</dd>
                 </div>
                 {submission.message && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Message</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{submission.message}</dd>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-100">Message</dt>
+                    <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{submission.message}</dd>
                   </div>
                 )}
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Created</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-100">Created</dt>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">
                     {new Date(submission.createdAt).toLocaleString()}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Expires</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-100">Expires</dt>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">
                     {new Date(submission.expiresAt).toLocaleString()}
                   </dd>
                 </div>
@@ -183,7 +183,7 @@ export default function SubmissionDetailPage() {
               <Card title="Share with Client">
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-100">
                       Review Link
                     </label>
                     <div className="relative">
@@ -216,7 +216,7 @@ export default function SubmissionDetailPage() {
                   </div>
                   {submission.accessPassword && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-100">
                         Access Password
                       </label>
                       <div className="relative">
@@ -248,7 +248,7 @@ export default function SubmissionDetailPage() {
                       </div>
                     </div>
                   )}
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-dark-gray-100">
                     Share this link and password with your client to review the media files.
                   </p>
                   <Button

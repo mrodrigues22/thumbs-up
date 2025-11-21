@@ -59,29 +59,29 @@ export function ClientSelector({
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
         Select Client
       </label>
       
       {/* Selected client display / trigger */}
       <div
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full px-3 py-2 border rounded-md bg-white cursor-pointer flex items-center justify-between ${
-          disabled ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-gray-400'
-        } ${isOpen ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-300'}`}
+        className={`w-full px-3 py-2 border rounded-md bg-white cursor-pointer flex items-center justify-between dark:bg-gray-700 ${
+          disabled ? 'bg-gray-100 cursor-not-allowed dark:bg-gray-600' : 'hover:border-gray-400 dark:hover:border-gray-500'
+        } ${isOpen ? 'border-blue-500 ring-1 ring-blue-500 dark:ring-blue-500' : 'border-gray-300: dark:border-gray-600'}`}
       >
         <div className="flex-1 min-w-0">
           {selectedClient ? (
             <div>
-              <div className="font-medium text-gray-900 truncate">
+              <div className="font-medium text-gray-900 truncate dark:text-gray-100">
                 {selectedClient.name || selectedClient.email}
               </div>
-              <div className="text-sm text-gray-500 truncate">
+              <div className="text-sm text-gray-500 truncate dark:text-gray-300">
                 {selectedClient.name ? selectedClient.email : ''}
               </div>
             </div>
           ) : (
-            <span className="text-gray-500">{placeholder}</span>
+            <span className="text-gray-500 dark:text-gray-400">{placeholder}</span>
           )}
         </div>
         
@@ -114,7 +114,7 @@ export function ClientSelector({
 
       {/* Dropdown menu */}
       {isOpen && !disabled && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-hidden">
+        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-80 overflow-hidden">
           {/* Search input */}
           <div className="p-2 border-b border-gray-200">
             <input
@@ -122,7 +122,7 @@ export function ClientSelector({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search clients..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               autoFocus
             />
           </div>
@@ -139,25 +139,20 @@ export function ClientSelector({
                   key={client.id}
                   type="button"
                   onClick={() => handleSelect(client)}
-                  className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-start gap-2 ${
-                    client.id === selectedClientId ? 'bg-blue-50' : ''
+                  className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-start gap-2 dark:hover:bg-gray-600 ${
+                    client.id === selectedClientId ? 'bg-blue-50 dark:bg-blue-900/30' : ''
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 truncate">
+                    <div className="font-medium text-gray-900 truncate dark:text-gray-100">
                       {client.name || client.email}
                     </div>
-                    <div className="text-sm text-gray-600 truncate">
+                    <div className="text-sm text-gray-600 truncate dark:text-gray-400">
                       {client.name && client.email}
                     </div>
                     {client.companyName && (
                       <div className="text-xs text-gray-500 truncate">
                         {client.companyName}
-                      </div>
-                    )}
-                    {client.lastUsedAt && (
-                      <div className="text-xs text-gray-400 mt-1">
-                        Last used: {new Date(client.lastUsedAt).toLocaleDateString()}
                       </div>
                     )}
                   </div>

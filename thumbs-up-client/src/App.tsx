@@ -42,6 +42,14 @@ function App() {
 
   useEffect(() => {
     loadAuth();
+    
+    // Initialize dark mode on app start
+    const savedMode = localStorage.getItem('darkMode');
+    if (savedMode === 'true') {
+      document.documentElement.classList.add('dark');
+    } else if (savedMode === null && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
   }, [loadAuth]);
 
   if (isLoading) {

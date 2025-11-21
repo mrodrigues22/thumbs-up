@@ -8,6 +8,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Layout } from '../components/layout';
 import { Card, Button, Input, ErrorMessage } from '../components/common';
 import { useAuth } from '../hooks/auth';
+import { useDarkMode } from '../hooks/useDarkMode';
 import { toast } from 'react-toastify';
 
 export default function LoginPage() {
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { isDarkMode } = useDarkMode();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,16 +39,16 @@ export default function LoginPage() {
 
   return (
     <Layout showNavbar={false}>
-      <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full">
           {/* Header */}
           <div className="text-center mb-8">
             <img 
-                            src="/logo.svg" 
+                            src={isDarkMode ? "/logo-light.svg" : "/logo.svg"}
                             className="h-12 cursor-pointer mx-auto" 
                             alt="Logo" 
                         />
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
               Sign in to your account
             </p>
           </div>
@@ -92,9 +94,9 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Don't have an account?{' '}
-                <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
+                <Link to="/register" className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
                   Register here
                 </Link>
               </p>

@@ -145,17 +145,17 @@ export default function CreateSubmissionPage() {
   if (success) {
     return (
       <Layout>
-        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto">
             {/* Success Header */}
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full mb-4">
+                <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900">Submission Created!</h1>
-              <p className="mt-2 text-gray-600">Your submission has been created successfully.</p>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Submission Created!</h1>
+              <p className="mt-2 text-gray-600 dark:text-gray-400">Your submission has been created successfully.</p>
             </div>
 
             {/* Review Details Card */}
@@ -163,7 +163,7 @@ export default function CreateSubmissionPage() {
               <div className="space-y-6">
                 {/* Review Link Section */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Review Link
                   </label>
                   <div className="flex gap-2">
@@ -171,7 +171,7 @@ export default function CreateSubmissionPage() {
                       type="text"
                       value={reviewLink}
                       readOnly
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm font-mono"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm font-mono"
                     />
                     <Button
                       variant="secondary"
@@ -187,7 +187,7 @@ export default function CreateSubmissionPage() {
 
                 {/* Password Section */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Access Password
                   </label>
                   <div className="flex gap-2">
@@ -195,7 +195,7 @@ export default function CreateSubmissionPage() {
                       type="text"
                       value={accessPassword}
                       readOnly
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm font-mono"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm font-mono"
                     />
                     <Button
                       variant="secondary"
@@ -210,14 +210,14 @@ export default function CreateSubmissionPage() {
                 </div>
 
                 {/* Instructions */}
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
                   <div className="flex">
-                    <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                      <h3 className="text-sm font-medium text-blue-900 mb-1">Next Steps</h3>
-                      <p className="text-sm text-blue-700">
+                      <h3 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-1">Next Steps</h3>
+                      <p className="text-sm text-blue-700 dark:text-blue-400">
                         Share both the review link and password with your client. They will need both to access and review the media files.
                       </p>
                     </div>
@@ -259,12 +259,12 @@ export default function CreateSubmissionPage() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Create Submission</h1>
-            <p className="mt-2 text-sm text-gray-600">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Create Submission</h1>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
               Upload files for your client to review and approve
             </p>
           </div>
@@ -278,7 +278,7 @@ export default function CreateSubmissionPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Client Mode Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Client Information
                 </label>
                 <div className="flex gap-4 mb-4">
@@ -288,7 +288,7 @@ export default function CreateSubmissionPage() {
                     className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                       clientMode === 'existing'
                         ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
                     Select Existing
@@ -299,7 +299,7 @@ export default function CreateSubmissionPage() {
                     className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                       clientMode === 'new'
                         ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
                     Create New
@@ -310,7 +310,7 @@ export default function CreateSubmissionPage() {
                     className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                       clientMode === 'quick'
                         ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
                     Quick Email
@@ -320,9 +320,9 @@ export default function CreateSubmissionPage() {
                 {/* Existing Client Selector */}
                 {clientMode === 'existing' && (
                   clientsLoading ? (
-                    <div className="text-center py-4 text-gray-500">Loading clients...</div>
+                    <div className="text-center py-4 text-gray-500 dark:text-gray-400">Loading clients...</div>
                   ) : clients.length === 0 ? (
-                    <div className="text-center py-4 text-gray-500">
+                    <div className="text-center py-4 text-gray-500 dark:text-gray-400">
                       No saved clients yet. Create a new client or use quick email entry.
                     </div>
                   ) : (
@@ -400,15 +400,15 @@ export default function CreateSubmissionPage() {
 
               {/* File Upload */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Upload Files
                   <span className="text-red-500 ml-1">*</span>
                 </label>
                 <div 
                   className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-colors ${
                     isDragging 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-300 hover:border-gray-400'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                      : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
                   }`}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -416,7 +416,7 @@ export default function CreateSubmissionPage() {
                 >
                   <div className="space-y-1 text-center">
                     <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
+                      className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
                       stroke="currentColor"
                       fill="none"
                       viewBox="0 0 48 48"
@@ -428,10 +428,10 @@ export default function CreateSubmissionPage() {
                         strokeLinejoin="round"
                       />
                     </svg>
-                    <div className="flex text-sm text-gray-600">
+                    <div className="flex text-sm text-gray-600 dark:text-gray-400">
                       <label
                         htmlFor="file-upload"
-                        className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                        className="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
                       >
                         <span>Upload files</span>
                         <input
@@ -446,7 +446,7 @@ export default function CreateSubmissionPage() {
                       </label>
                       <p className="pl-1">or drag and drop</p>
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       Images or videos (same type only)
                     </p>
                   </div>

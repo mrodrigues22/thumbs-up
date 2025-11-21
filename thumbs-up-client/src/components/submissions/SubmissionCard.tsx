@@ -32,7 +32,7 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
           {/* Header */}
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {submission.clientName || submission.clientEmail}
               </h3>
               <p className="text-sm text-gray-500 mt-1">

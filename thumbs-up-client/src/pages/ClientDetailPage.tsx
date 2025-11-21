@@ -220,11 +220,11 @@ export default function ClientDetailPage() {
   if (!client) {
     return (
       <Layout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 dark:text-gray-100">
           <Card>
             <div className="text-center py-12">
-              <h3 className="text-lg font-medium text-gray-900 mb-1">Client not found</h3>
-              <p className="text-gray-500 mb-4">The requested client could not be found.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-1 dark:text-gray-100">Client not found</h3>
+              <p className="text-gray-500 mb-4 dark:text-gray-300">The requested client could not be found.</p>
               <Button onClick={() => navigate('/clients')} variant="primary">
                 Back to Clients
               </Button>
@@ -278,7 +278,7 @@ export default function ClientDetailPage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-primary-600 font-semibold text-2xl">
+                  <span className="text-primary-600 font-semibold text-2xl dark:text-gray-100">
                     {(client.name || client.email).charAt(0).toUpperCase()}
                   </span>
                 )}
@@ -287,7 +287,7 @@ export default function ClientDetailPage() {
                 </div>
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {client.name || client.email}
                 </h1>
                 {client.name && (
@@ -317,7 +317,7 @@ export default function ClientDetailPage() {
           <div className="px-4 py-5 sm:p-6">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-lg font-medium text-gray-900">Submissions</h2>
+                <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Submissions</h2>
                 <p className="mt-1 text-sm text-gray-500">
                   All submissions created for this client
                 </p>
@@ -345,7 +345,7 @@ export default function ClientDetailPage() {
                 <LoadingSpinner size="medium" />
               </div>
             ) : submissions.length === 0 ? (
-              <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <div className="text-center py-12 bg-gray-50 rounded-lg dark:bg-gray-700">
                 <svg
                   className="mx-auto h-12 w-12 text-gray-400"
                   fill="none"
@@ -359,8 +359,8 @@ export default function ClientDetailPage() {
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                   />
                 </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No submissions</h3>
-                <p className="mt-1 text-sm text-gray-500">
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No submissions</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-300">
                   Get started by creating a new submission for this client.
                 </p>
                 <div className="mt-6">
@@ -467,7 +467,7 @@ export default function ClientDetailPage() {
         <Card>
           <div className="px-4 py-5 sm:p-6">
             <div className="flex justify-between items-start mb-6">
-              <h2 className="text-lg font-medium text-gray-900">Client Information</h2>
+              <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Client Information</h2>
               <div className="flex gap-2">
                 <Button onClick={handleOpenEditModal} variant="ghost" size="small">
                   <svg
@@ -512,27 +512,27 @@ export default function ClientDetailPage() {
             <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
               {client.name && (
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Name</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{client.name}</dd>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-100">Name</dt>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{client.name}</dd>
                 </div>
               )}
               <div>
-                <dt className="text-sm font-medium text-gray-500">Email</dt>
-                <dd className="mt-1 text-sm text-gray-900">{client.email}</dd>
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-100">Email</dt>
+                <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{client.email}</dd>
               </div>
               {client.companyName && (
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Company</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{client.companyName}</dd>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-100">Company</dt>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{client.companyName}</dd>
                 </div>
               )}
               <div>
-                <dt className="text-sm font-medium text-gray-500">Submissions</dt>
-                <dd className="mt-1 text-sm text-gray-900">{client.submissionCount}</dd>
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-100">Submissions</dt>
+                <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{client.submissionCount}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500">Created</dt>
-                <dd className="mt-1 text-sm text-gray-900">
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-100">Created</dt>
+                <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">
                   {new Date(client.createdAt).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',

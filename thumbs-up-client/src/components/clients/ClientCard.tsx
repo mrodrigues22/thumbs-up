@@ -48,11 +48,11 @@ export function ClientCard({ client }: ClientCardProps) {
 
         {/* Client Info */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-gray-900 truncate">
+          <h3 className="text-lg font-semibold text-gray-900 truncate dark:text-gray-100">
             {displayName}
           </h3>
           {showCompany && (
-            <p className="text-sm text-gray-600 truncate">
+            <p className="text-sm text-gray-600 truncate dark:text-gray-300">
               {client.companyName}
             </p>
           )}
