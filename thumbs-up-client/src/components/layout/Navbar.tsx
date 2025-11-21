@@ -3,13 +3,14 @@
  * Main navigation bar with user menu
  */
 
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/auth';
 import { Button } from '../common';
 
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
@@ -23,8 +24,11 @@ export const Navbar: React.FC = () => {
           {/* Logo/Brand */}
           <div className="flex items-center">
             <Link to="/dashboard" className="flex items-center space-x-2">
-              <span className="text-2xl">👍</span>
-              <span className="text-xl font-bold text-gray-900">Thumbs Up</span>
+                        <img 
+                            src="/logo.svg" 
+                            className="h-8 cursor-pointer" 
+                            alt="Logo" 
+                        />
             </Link>
           </div>
 
@@ -33,13 +37,21 @@ export const Navbar: React.FC = () => {
             <div className="hidden md:flex items-center space-x-6">
               <Link
                 to="/dashboard"
-                className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
+                className={`transition-colors font-medium ${
+                  location.pathname === '/dashboard'
+                    ? 'text-primary'
+                    : 'text-gray-700 hover:text-primary'
+                }`}
               >
                 Dashboard
               </Link>
               <Link
                 to="/submissions/create"
-                className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
+                className={`transition-colors font-medium ${
+                  location.pathname === '/submissions/create'
+                    ? 'text-primary'
+                    : 'text-gray-700 hover:text-primary'
+                }`}
               >
                 New Submission
               </Link>
