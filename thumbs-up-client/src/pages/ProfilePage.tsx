@@ -5,7 +5,7 @@
 
 import { useState, useRef } from 'react';
 import { Layout } from '../components/layout';
-import { Card, Button, Input, ErrorMessage } from '../components/common';
+import { Card, Button, Input, ErrorMessage, ImageCropper } from '../components/common';
 import { useAuth } from '../hooks/auth';
 import { toast } from 'react-toastify';
 import { authService } from '../services/authService';
@@ -22,6 +22,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(user?.profilePictureUrl || null);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,7 +48,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -57,16 +58,32 @@ export default function ProfilePage() {
       return;
     }
 
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size must be less than 5MB');
+    // Validate file size (10MB before cropping)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
       return;
     }
 
+    // Read file and show cropper
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageToCrop(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset file input
+    e.target.value = '';
+  };
+
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
+    setImageToCrop(null);
     setUploadingPicture(true);
     setError('');
 
     try {
+      // Convert blob to file
+      const file = new File([croppedImageBlob], 'profile-picture.jpg', { type: 'image/jpeg' });
+      
       const response = await authService.uploadProfilePicture(file);
       
       // Update preview and user state
@@ -80,6 +97,10 @@ export default function ProfilePage() {
     } finally {
       setUploadingPicture(false);
     }
+  };
+
+  const handleCropCancel = () => {
+    setImageToCrop(null);
   };
 
   const handlePictureClick = () => {
@@ -143,8 +164,19 @@ export default function ProfilePage() {
             >
               Upload Profile Picture
             </button>
-            <p className="text-xs text-gray-500 mt-1">JPG, PNG or GIF (max 5MB)</p>
+            <p className="text-xs text-gray-500 mt-1">JPG, PNG or GIF (max 10MB)</p>
           </div>
+
+          {/* Image Cropper Modal */}
+          {imageToCrop && (
+            <ImageCropper
+              image={imageToCrop}
+              onCropComplete={handleCropComplete}
+              onCancel={handleCropCancel}
+              aspectRatio={1}
+              cropShape="round"
+            />
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input

@@ -11,3 +11,4 @@ export { Input } from './Input';
 export { Textarea } from './Textarea';
 export { Modal } from './Modal';
 export { ClientSelector } from './ClientSelector';
+export { ImageCropper } from './ImageCropper';
