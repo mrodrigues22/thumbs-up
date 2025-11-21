@@ -100,7 +100,7 @@ export const Navbar: React.FC = () => {
               <>
                 <Link 
                   to="/profile" 
-                  className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300 hover:text-primary transition-colors"
+                  className="flex items-center space-x-2 text-sm text-gray-800 dark:text-gray-200 hover:text-primary transition-colors"
                 >
                   {user?.profilePictureUrl ? (
                     <img 
