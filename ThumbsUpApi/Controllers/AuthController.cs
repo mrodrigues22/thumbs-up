@@ -45,7 +45,8 @@ public class AuthController : ControllerBase
             UserName = request.Email,
             Email = request.Email,
             FirstName = request.FirstName,
-            LastName = request.LastName
+            LastName = request.LastName,
+            CompanyName = request.CompanyName
         };
         
         var result = await _userManager.CreateAsync(user, request.Password);
@@ -99,6 +100,7 @@ public class AuthController : ControllerBase
             Email = user.Email!,
             FirstName = user.FirstName,
             LastName = user.LastName,
+            CompanyName = user.CompanyName,
             ExpiresAt = DateTime.UtcNow.AddHours(GetTokenExpirationHours())
         });
     }

@@ -14,6 +14,7 @@ public class RegisterRequest
     
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
+    public string? CompanyName { get; set; }
 }
 
 public class LoginRequest
@@ -32,5 +33,6 @@ public class AuthResponse
     public string Email { get; set; } = string.Empty;
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
+    public string? CompanyName { get; set; }
     public DateTime ExpiresAt { get; set; }
 }

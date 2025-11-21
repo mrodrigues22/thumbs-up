@@ -40,6 +40,7 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  companyName?: string;
   role?: UserRole;
 }
 
@@ -48,6 +49,7 @@ export interface AuthResponse {
   email: string;
   firstName?: string;
   lastName?: string;
+  companyName?: string;
   role?: UserRole;
   expiresAt: string;
 }
@@ -57,6 +59,7 @@ export interface RegisterRequest {
   password: string;
   firstName?: string;
   lastName?: string;
+  companyName?: string;
 }
 
 export interface LoginRequest {

@@ -16,6 +16,7 @@ export default function RegisterPage() {
     password: '',
     firstName: '',
     lastName: '',
+    companyName: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,8 @@ export default function RegisterPage() {
         formData.email,
         formData.password,
         formData.firstName,
-        formData.lastName
+        formData.lastName,
+        formData.companyName
       );
       toast.success('Account created successfully!');
       navigate('/dashboard');
@@ -110,6 +112,16 @@ export default function RegisterPage() {
                   autoComplete="family-name"
                 />
               </div>
+
+              <Input
+                label="Company Name (Optional)"
+                name="companyName"
+                type="text"
+                value={formData.companyName}
+                onChange={(value) => setFormData({ ...formData, companyName: value })}
+                placeholder="Acme Corporation"
+                autoComplete="organization"
+              />
 
               <Button
                 type="submit"
