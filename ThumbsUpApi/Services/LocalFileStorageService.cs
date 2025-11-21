@@ -4,12 +4,17 @@ public class LocalFileStorageService : IFileStorageService
 {
     private readonly IWebHostEnvironment _environment;
     private readonly IConfiguration _configuration;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly string _uploadPath;
     
-    public LocalFileStorageService(IWebHostEnvironment environment, IConfiguration configuration)
+    public LocalFileStorageService(
+        IWebHostEnvironment environment, 
+        IConfiguration configuration,
+        IHttpContextAccessor httpContextAccessor)
     {
         _environment = environment;
         _configuration = configuration;
+        _httpContextAccessor = httpContextAccessor;
         
         // Get upload path from configuration or use default
         var configPath = _configuration["FileStorage:LocalPath"] ?? "wwwroot/uploads";
@@ -69,8 +74,17 @@ public class LocalFileStorageService : IFileStorageService
     
     public string GetFileUrl(string filePath)
     {
-        // For local storage, return the relative path (will be served as static file)
-        return $"/uploads/{filePath}";
+        // Build full URL with the API base URL
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext != null)
+        {
+            var request = httpContext.Request;
+            var baseUrl = $"{request.Scheme}://{request.Host}";
+            return $"{baseUrl}/uploads/{filePath.Replace("\\", "/")}";
+        }
+        
+        // Fallback to relative path
+        return $"/uploads/{filePath.Replace("\\", "/")}";
     }
     
     public string GetPhysicalPath(string filePath)
