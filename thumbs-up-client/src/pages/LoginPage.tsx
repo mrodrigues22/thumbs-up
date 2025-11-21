@@ -1,7 +1,14 @@
+/**
+ * LoginPage
+ * User login page with improved UI
+ */
+
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authService } from '../services/authService';
-import { useAuthStore } from '../stores/authStore';
+import { Layout } from '../components/layout';
+import { Card, Button, Input, ErrorMessage } from '../components/common';
+import { useAuth } from '../hooks/auth';
+import { toast } from 'react-toastify';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -9,7 +16,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const setAuth = useAuthStore((state: any) => state.setAuth);
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,52 +24,83 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await authService.login({ email, password });
-      setAuth(
-        { email: response.email, firstName: response.firstName, lastName: response.lastName },
-        response.token,
-        response.expiresAt
-      );
+      await login(email, password);
+      toast.success('Welcome back!');
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
-      <h1>Login</h1>
-      <form onSubmit={handleSubmit}>
-        {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
-        <div style={{ marginBottom: '15px' }}>
-          <label>Email:</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
+    <Layout showNavbar={false}>
+      <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
+        <div className="max-w-md w-full">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <span className="text-6xl">👍</span>
+            <h2 className="mt-4 text-3xl font-extrabold text-gray-900">
+              Thumbs Up
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Sign in to your account
+            </p>
+          </div>
+
+          {/* Login Card */}
+          <Card>
+            {error && (
+              <ErrorMessage error={error} className="mb-4" />
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <Input
+                label="Email Address"
+                name="email"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                required
+                placeholder="you@example.com"
+                autoComplete="email"
+              />
+
+              <Input
+                label="Password"
+                name="password"
+                type="password"
+                value={password}
+                onChange={setPassword}
+                required
+                placeholder="Enter your password"
+                autoComplete="current-password"
+              />
+
+              <Button
+                type="submit"
+                variant="primary"
+                fullWidth
+                loading={loading}
+                disabled={loading}
+              >
+                Sign In
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                Don't have an account?{' '}
+                <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
+                  Register here
+                </Link>
+              </p>
+            </div>
+          </Card>
         </div>
-        <div style={{ marginBottom: '15px' }}>
-          <label>Password:</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
-        </div>
-        <button type="submit" disabled={loading} style={{ padding: '10px 20px' }}>
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
-      <p style={{ marginTop: '20px' }}>
-        Don't have an account? <Link to="/register">Register</Link>
-      </p>
-    </div>
+      </div>
+    </Layout>
   );
 }

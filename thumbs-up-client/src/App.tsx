@@ -1,24 +1,23 @@
-import { useEffect, type JSX } from 'react';
+/**
+ * App Component
+ * Main application router with protected routes
+ */
+
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useAuthStore } from './stores/authStore';
+import { ProtectedRoute } from './components/layout';
+import { LoadingSpinner } from './components/common';
+
+// Pages
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import DashboardPage from './pages/DashboardPage';
+import SubmissionsPage from './pages/SubmissionsPage';
+import SubmissionDetailPage from './pages/SubmissionDetailPage';
 import CreateSubmissionPage from './pages/CreateSubmissionPage';
 import ClientReviewPage from './pages/ClientReviewPage';
-
-function PrivateRoute({ children }: { children: JSX.Element }) {
-  const { isAuthenticated, isLoading } = useAuthStore((state) => ({
-    isAuthenticated: state.isAuthenticated,
-    isLoading: state.isLoading,
-  }));
-  
-  if (isLoading) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>;
-  }
-  
-  return isAuthenticated ? children : <Navigate to="/login" />;
-}
 
 function App() {
   const { loadAuth, isLoading } = useAuthStore((state) => ({
@@ -31,34 +30,74 @@ function App() {
   }, [loadAuth]);
 
   if (isLoading) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>;
+    return <LoadingSpinner fullScreen size="large" />;
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/review/:token" element={<ClientReviewPage />} />
-        <Route
-          path="/dashboard"
-          element={
-            <PrivateRoute>
-              <DashboardPage />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/create-submission"
-          element={
-            <PrivateRoute>
-              <CreateSubmissionPage />
-            </PrivateRoute>
-          }
-        />
-        <Route path="/" element={<Navigate to="/dashboard" />} />
-      </Routes>
-    </BrowserRouter>
+    <>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/review/:token" element={<ClientReviewPage />} />
+
+          {/* Protected Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <SubmissionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/submissions"
+            element={
+              <ProtectedRoute>
+                <SubmissionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/submissions/create"
+            element={
+              <ProtectedRoute>
+                <CreateSubmissionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/submissions/:id"
+            element={
+              <ProtectedRoute>
+                <SubmissionDetailPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Default Route */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          
+          {/* 404 Route */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
+
+      {/* Toast Notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+    </>
   );
 }
 

@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Layout } from '../components/layout';
+import { Card, Button, Input, Textarea } from '../components/common';
+import { useCreateSubmission } from '../hooks/submissions';
+import type { CreateSubmissionRequest } from '../shared/types';
 import { submissionService } from '../services/submissionService';
 
 export default function CreateSubmissionPage() {
+  const navigate = useNavigate();
+  useCreateSubmission();
   const [formData, setFormData] = useState({
     clientEmail: '',
     accessPassword: '',
@@ -13,7 +19,6 @@ export default function CreateSubmissionPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [reviewLink, setReviewLink] = useState('');
-  const navigate = useNavigate();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {

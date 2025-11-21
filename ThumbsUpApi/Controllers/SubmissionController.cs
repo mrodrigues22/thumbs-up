@@ -133,6 +133,7 @@ public class SubmissionController : ControllerBase
         var submissions = await _context.Submissions
             .Include(s => s.MediaFiles)
             .Include(s => s.Review)
+            .Include(s => s.CreatedBy)
             .Where(s => s.CreatedById == userId)
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync();
@@ -150,6 +151,7 @@ public class SubmissionController : ControllerBase
         var submission = await _context.Submissions
             .Include(s => s.MediaFiles)
             .Include(s => s.Review)
+            .Include(s => s.CreatedBy)
             .FirstOrDefaultAsync(s => s.Id == id && s.CreatedById == userId);
         
         if (submission == null)

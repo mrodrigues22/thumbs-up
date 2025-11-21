@@ -1,0 +1,209 @@
+/**
+ * SubmissionDetailPage
+ * View details of a single submission
+ */
+
+import { useParams, useNavigate } from 'react-router-dom';
+import { Layout } from '../components/layout';
+import { Card, Button, LoadingSpinner, ErrorMessage } from '../components/common';
+import { SubmissionStatusBadge, MediaGallery } from '../components/submissions';
+import { useSubmissionDetail, useDeleteSubmission } from '../hooks/submissions';
+
+export default function SubmissionDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  const { submission, isLoading, isError, error, refetch } = useSubmissionDetail({
+    id: id!,
+  });
+
+  const { deleteSubmission, isLoading: isDeleting } = useDeleteSubmission();
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this submission?')) {
+      return;
+    }
+
+    const success = await deleteSubmission(id!);
+    if (success) {
+      navigate('/dashboard');
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (submission) {
+      const reviewLink = `${window.location.origin}/review/${submission.accessToken}`;
+      navigator.clipboard.writeText(reviewLink);
+      // Toast notification would be shown by the hook
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <LoadingSpinner fullScreen size="large" />
+      </Layout>
+    );
+  }
+
+  if (isError || !submission) {
+    return (
+      <Layout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <ErrorMessage error={error || 'Submission not found'} onRetry={refetch} />
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="text-blue-600 hover:text-blue-700 mb-4 inline-flex items-center"
+          >
+            <svg
+              className="w-5 h-5 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Back to Dashboard
+          </button>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Submission Details</h1>
+            </div>
+            <SubmissionStatusBadge status={submission.status} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Submission Info */}
+            <Card title="Submission Information">
+              <dl className="grid grid-cols-1 gap-4">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Client Email</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{submission.clientEmail}</dd>
+                </div>
+                {submission.message && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Message</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{submission.message}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Created</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {new Date(submission.createdAt).toLocaleString()}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Expires</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {new Date(submission.expiresAt).toLocaleString()}
+                  </dd>
+                </div>
+              </dl>
+            </Card>
+
+            {/* Media Files */}
+            <Card title={`Media Files (${submission.mediaFiles.length})`}>
+              {submission.mediaFiles.length > 0 ? (
+                <MediaGallery mediaFiles={submission.mediaFiles} />
+              ) : (
+                <p className="text-sm text-gray-500">No media files uploaded.</p>
+              )}
+            </Card>
+
+            {/* Review */}
+            {submission.review && (
+              <Card title="Client Review">
+                <dl className="grid grid-cols-1 gap-4">
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Status</dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {submission.review.status === 0 ? 'Approved' : 'Rejected'}
+                    </dd>
+                  </div>
+                  {submission.review.comment && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Comment</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        {submission.review.comment}
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Reviewed At</dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {new Date(submission.review.reviewedAt).toLocaleString()}
+                    </dd>
+                  </div>
+                </dl>
+              </Card>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Actions */}
+            <Card title="Actions">
+              <div className="space-y-3">
+                <Button
+                  fullWidth
+                  variant="primary"
+                  onClick={handleCopyLink}
+                >
+                  Copy Review Link
+                </Button>
+                <Button
+                  fullWidth
+                  variant="danger"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  loading={isDeleting}
+                >
+                  Delete Submission
+                </Button>
+              </div>
+            </Card>
+
+            {/* Share Info */}
+            <Card title="Share with Client">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Review Link
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}/review/${submission.accessToken}`}
+                    className="input-field text-xs"
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Share this link with your client to review the media files. They will need
+                  the access password you created.
+                </p>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+}
