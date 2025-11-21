@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Layout } from '../components/layout';
 import { Card, Button, Input, Textarea, ErrorMessage, ClientSelector } from '../components/common';
@@ -13,11 +13,13 @@ type ClientMode = 'existing' | 'new' | 'quick';
 export default function CreateSubmissionPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const clientIdFromUrl = searchParams.get('clientId');
   useCreateSubmission();
   const { data: clients = [], isLoading: clientsLoading } = useClients();
   
   const [clientMode, setClientMode] = useState<ClientMode>('existing');
-  const [selectedClientId, setSelectedClientId] = useState<string>();
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(clientIdFromUrl || undefined);
   const [formData, setFormData] = useState({
     clientEmail: '',
     clientName: '',
@@ -31,6 +33,14 @@ export default function CreateSubmissionPage() {
   const [reviewLink, setReviewLink] = useState('');
   const [accessPassword, setAccessPassword] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+
+  // Auto-select client if coming from client detail page
+  useEffect(() => {
+    if (clientIdFromUrl) {
+      setSelectedClientId(clientIdFromUrl);
+      setClientMode('existing');
+    }
+  }, [clientIdFromUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -277,6 +287,7 @@ export default function CreateSubmissionPage() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Client Mode Selection */}
+              {!clientIdFromUrl && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Client Information
@@ -375,6 +386,27 @@ export default function CreateSubmissionPage() {
                   />
                 )}
               </div>
+              )}
+
+              {/* Show selected client when coming from client detail page */}
+              {clientIdFromUrl && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Creating submission for
+                  </label>
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-3">
+                    {clientsLoading ? (
+                      <span className="text-gray-500 dark:text-gray-400">Loading client...</span>
+                    ) : (
+                      <span className="text-gray-900 dark:text-gray-100 font-medium">
+                        {clients.find(c => c.id === clientIdFromUrl)?.name || 
+                         clients.find(c => c.id === clientIdFromUrl)?.email || 
+                         'Selected Client'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Message */}
               <Textarea

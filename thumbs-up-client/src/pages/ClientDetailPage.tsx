@@ -189,7 +189,7 @@ export default function ClientDetailPage() {
   };
 
   const handleCreateSubmission = () => {
-    navigate(`/submissions/new?clientId=${id}`);
+    navigate(`/submissions/create?clientId=${id}`);
   };
 
   const getStatusBadge = (status: SubmissionStatus) => {
