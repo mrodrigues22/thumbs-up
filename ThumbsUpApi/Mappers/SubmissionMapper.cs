@@ -18,10 +18,13 @@ public class SubmissionMapper
         return new SubmissionResponse
         {
             Id = submission.Id,
+            ClientId = submission.ClientId,
             ClientEmail = submission.ClientEmail,
+            ClientName = submission.Client?.Name,
             AccessToken = submission.AccessToken,
             AccessPassword = submission.AccessPassword,
             Message = submission.Message,
+            Captions = submission.Captions,
             Status = submission.Status,
             CreatedAt = submission.CreatedAt,
             ExpiresAt = submission.ExpiresAt,

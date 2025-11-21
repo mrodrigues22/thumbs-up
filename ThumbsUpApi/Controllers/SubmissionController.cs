@@ -15,6 +15,7 @@ namespace ThumbsUpApi.Controllers;
 public class SubmissionController : ControllerBase
 {
     private readonly ISubmissionRepository _submissionRepository;
+    private readonly IClientRepository _clientRepository;
     private readonly IFileStorageService _fileStorage;
     private readonly IEmailService _emailService;
     private readonly IConfiguration _configuration;
@@ -23,6 +24,7 @@ public class SubmissionController : ControllerBase
     
     public SubmissionController(
         ISubmissionRepository submissionRepository,
+        IClientRepository clientRepository,
         IFileStorageService fileStorage,
         IEmailService emailService,
         IConfiguration configuration,
@@ -30,6 +32,7 @@ public class SubmissionController : ControllerBase
         SubmissionMapper mapper)
     {
         _submissionRepository = submissionRepository;
+        _clientRepository = clientRepository;
         _fileStorage = fileStorage;
         _emailService = emailService;
         _configuration = configuration;
@@ -46,6 +49,12 @@ public class SubmissionController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
+        
+        // Validate that either ClientId or ClientEmail is provided
+        if (!request.ClientId.HasValue && string.IsNullOrWhiteSpace(request.ClientEmail))
+        {
+            return BadRequest(new { message = "Either ClientId or ClientEmail is required" });
+        }
         
         // Validate files
         if (request.Files == null || request.Files.Count == 0)
@@ -65,6 +74,57 @@ public class SubmissionController : ControllerBase
             return BadRequest(new { message = $"File size must not exceed {maxFileSize / 1048576}MB" });
         }
         
+        // Handle client: use existing or create new
+        Client? client = null;
+        string clientEmail;
+        
+        if (request.ClientId.HasValue)
+        {
+            // Option 1: Use existing client
+            client = await _clientRepository.GetByIdAsync(request.ClientId.Value, userId);
+            if (client == null)
+            {
+                return BadRequest(new { message = "Client not found" });
+            }
+            clientEmail = client.Email;
+            
+            // Update LastUsedAt
+            client.LastUsedAt = DateTime.UtcNow;
+            await _clientRepository.UpdateAsync(client);
+        }
+        else
+        {
+            clientEmail = request.ClientEmail!;
+            
+            // Option 2: Check if we should create a new client (if ClientName is provided)
+            if (!string.IsNullOrWhiteSpace(request.ClientName))
+            {
+                // Check if client already exists
+                var existingClient = await _clientRepository.FindByEmailAsync(clientEmail, userId);
+                if (existingClient != null)
+                {
+                    client = existingClient;
+                    client.LastUsedAt = DateTime.UtcNow;
+                    await _clientRepository.UpdateAsync(client);
+                }
+                else
+                {
+                    // Create new client
+                    client = new Client
+                    {
+                        Id = Guid.NewGuid(),
+                        CreatedById = userId,
+                        Email = clientEmail,
+                        Name = request.ClientName,
+                        CreatedAt = DateTime.UtcNow,
+                        LastUsedAt = DateTime.UtcNow
+                    };
+                    await _clientRepository.CreateAsync(client);
+                }
+            }
+            // Option 3: Quick email entry (no ClientName) - don't create client
+        }
+        
         // Generate secure password
         var accessPassword = GenerateAccessPassword();
         
@@ -73,7 +133,8 @@ public class SubmissionController : ControllerBase
         {
             Id = Guid.NewGuid(),
             CreatedById = userId,
-            ClientEmail = request.ClientEmail,
+            ClientId = client?.Id,
+            ClientEmail = clientEmail,
             AccessToken = GenerateAccessToken(),
             AccessPasswordHash = BCrypt.Net.BCrypt.HashPassword(accessPassword),
             AccessPassword = accessPassword,

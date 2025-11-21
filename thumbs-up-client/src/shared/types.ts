@@ -108,13 +108,39 @@ export interface ValidateAccessResponse {
   message: string;
 }
 
+// ===== Client Types =====
+export interface Client {
+  id: string;
+  email: string;
+  name?: string;
+  companyName?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  submissionCount: number;
+}
+
+export interface CreateClientRequest {
+  email: string;
+  name?: string;
+  companyName?: string;
+}
+
+export interface UpdateClientRequest {
+  email: string;
+  name?: string;
+  companyName?: string;
+}
+
 // ===== Submission Types =====
 export interface SubmissionResponse {
   id: string;
+  clientId?: string;
   clientEmail: string;
+  clientName?: string;
   accessToken: string;
   accessPassword?: string;
   message?: string;
+  captions?: string;
   status: SubmissionStatus;
   createdAt: string;
   expiresAt: string;
@@ -124,8 +150,11 @@ export interface SubmissionResponse {
 }
 
 export interface CreateSubmissionRequest {
-  clientEmail: string;
+  clientId?: string;
+  clientEmail?: string;
+  clientName?: string;
   message?: string;
+  captions?: string;
   files: File[];
 }
 

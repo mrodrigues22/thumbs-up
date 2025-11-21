@@ -9,6 +9,9 @@ public class Submission
     [Required]
     public string CreatedById { get; set; } = string.Empty;
     
+    // Client relationship (nullable for backward compatibility)
+    public Guid? ClientId { get; set; }
+    
     [Required]
     [EmailAddress]
     public string ClientEmail { get; set; } = string.Empty;
@@ -34,6 +37,7 @@ public class Submission
     
     // Navigation properties
     public ApplicationUser CreatedBy { get; set; } = null!;
+    public Client? Client { get; set; }
     public ICollection<MediaFile> MediaFiles { get; set; } = new List<MediaFile>();
     public Review? Review { get; set; }
 }

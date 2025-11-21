@@ -5,9 +5,14 @@ namespace ThumbsUpApi.DTOs;
 
 public class CreateSubmissionRequest
 {
-    [Required]
+    // Option 1: Use existing client
+    public Guid? ClientId { get; set; }
+    
+    // Option 2: Create new client or quick email entry
     [EmailAddress]
-    public string ClientEmail { get; set; } = string.Empty;
+    public string? ClientEmail { get; set; }
+    
+    public string? ClientName { get; set; }
     
     public string? Message { get; set; }
     
@@ -20,7 +25,9 @@ public class CreateSubmissionRequest
 public class SubmissionResponse
 {
     public Guid Id { get; set; }
+    public Guid? ClientId { get; set; }
     public string ClientEmail { get; set; } = string.Empty;
+    public string? ClientName { get; set; }
     public string AccessToken { get; set; } = string.Empty;
     public string? AccessPassword { get; set; }
     public string? Message { get; set; }

@@ -5,11 +5,23 @@
 
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuthStore } from './stores/authStore';
 import { ProtectedRoute } from './components/layout';
 import { LoadingSpinner } from './components/common';
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -34,7 +46,7 @@ function App() {
   }
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
           {/* Public Routes */}
@@ -97,7 +109,7 @@ function App() {
         pauseOnHover
         theme="light"
       />
-    </>
+    </QueryClientProvider>
   );
 }
 

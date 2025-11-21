@@ -1,16 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/layout';
-import { Card, Button, Input, Textarea, ErrorMessage } from '../components/common';
+import { Card, Button, Input, Textarea, ErrorMessage, ClientSelector } from '../components/common';
 import { useCreateSubmission } from '../hooks/submissions';
+import { useClients } from '../hooks/clients/useClients';
 import { submissionService } from '../services/submissionService';
 import { toast } from 'react-toastify';
+
+type ClientMode = 'existing' | 'new' | 'quick';
 
 export default function CreateSubmissionPage() {
   const navigate = useNavigate();
   useCreateSubmission();
+  const { data: clients = [], isLoading: clientsLoading } = useClients();
+  
+  const [clientMode, setClientMode] = useState<ClientMode>('existing');
+  const [selectedClientId, setSelectedClientId] = useState<string>();
   const [formData, setFormData] = useState({
     clientEmail: '',
+    clientName: '',
     message: '',
     captions: '',
   });
@@ -70,14 +78,44 @@ export default function CreateSubmissionPage() {
       return;
     }
 
+    // Validate based on client mode
+    if (clientMode === 'existing' && !selectedClientId) {
+      setError('Please select a client');
+      return;
+    }
+    
+    if (clientMode === 'new' && (!formData.clientEmail || !formData.clientName)) {
+      setError('Please enter both client name and email');
+      return;
+    }
+    
+    if (clientMode === 'quick' && !formData.clientEmail) {
+      setError('Please enter client email');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
     try {
-      const response = await submissionService.createSubmission({
-        ...formData,
+      const submissionData: any = {
         files,
-      });
+        message: formData.message,
+        captions: formData.captions,
+      };
+
+      // Add client information based on mode
+      if (clientMode === 'existing') {
+        submissionData.clientId = selectedClientId;
+      } else if (clientMode === 'new') {
+        submissionData.clientEmail = formData.clientEmail;
+        submissionData.clientName = formData.clientName;
+      } else {
+        // quick mode
+        submissionData.clientEmail = formData.clientEmail;
+      }
+
+      const response = await submissionService.createSubmission(submissionData);
       
       setSuccess(true);
       setReviewLink(`${window.location.origin}/review/${response.accessToken}`);
@@ -193,7 +231,9 @@ export default function CreateSubmissionPage() {
                     fullWidth
                     onClick={() => {
                       setSuccess(false);
-                      setFormData({ clientEmail: '', message: '', captions: '' });
+                      setFormData({ clientEmail: '', clientName: '', message: '', captions: '' });
+                      setSelectedClientId(undefined);
+                      setClientMode('existing');
                       setFiles([]);
                       setReviewLink('');
                       setAccessPassword('');
@@ -229,17 +269,105 @@ export default function CreateSubmissionPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Client Email */}
-              <Input
-                label="Client Email"
-                name="clientEmail"
-                type="email"
-                value={formData.clientEmail}
-                onChange={(value) => setFormData({ ...formData, clientEmail: value })}
-                required
-                placeholder="client@example.com"
-                helperText="The email address of your client"
-              />
+              {/* Client Mode Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Client Information
+                </label>
+                <div className="flex gap-4 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setClientMode('existing')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                      clientMode === 'existing'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Select Existing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClientMode('new')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                      clientMode === 'new'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Create New
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClientMode('quick')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                      clientMode === 'quick'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Quick Email
+                  </button>
+                </div>
+
+                {/* Existing Client Selector */}
+                {clientMode === 'existing' && (
+                  clientsLoading ? (
+                    <div className="text-center py-4 text-gray-500">Loading clients...</div>
+                  ) : clients.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500">
+                      No saved clients yet. Create a new client or use quick email entry.
+                    </div>
+                  ) : (
+                    <ClientSelector
+                      clients={clients}
+                      selectedClientId={selectedClientId}
+                      onSelect={(client) => setSelectedClientId(client?.id)}
+                      placeholder="Select a client..."
+                    />
+                  )
+                )}
+
+                {/* New Client Form */}
+                {clientMode === 'new' && (
+                  <div className="space-y-4">
+                    <Input
+                      label="Client Name"
+                      name="clientName"
+                      type="text"
+                      value={formData.clientName}
+                      onChange={(value) => setFormData({ ...formData, clientName: value })}
+                      required
+                      placeholder="John Doe"
+                      helperText="The name of your client"
+                    />
+                    <Input
+                      label="Client Email"
+                      name="clientEmail"
+                      type="email"
+                      value={formData.clientEmail}
+                      onChange={(value) => setFormData({ ...formData, clientEmail: value })}
+                      required
+                      placeholder="client@example.com"
+                      helperText="The email address of your client"
+                    />
+                  </div>
+                )}
+
+                {/* Quick Email Entry */}
+                {clientMode === 'quick' && (
+                  <Input
+                    label="Client Email"
+                    name="clientEmail"
+                    type="email"
+                    value={formData.clientEmail}
+                    onChange={(value) => setFormData({ ...formData, clientEmail: value })}
+                    required
+                    placeholder="client@example.com"
+                    helperText="Quick submission without saving client"
+                  />
+                )}
+              </div>
 
               {/* Message */}
               <Textarea

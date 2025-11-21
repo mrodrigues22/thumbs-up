@@ -4,10 +4,25 @@ import type { CreateSubmissionRequest, SubmissionResponse } from '../shared/type
 export const submissionService = {
   async createSubmission(data: CreateSubmissionRequest): Promise<SubmissionResponse> {
     const formData = new FormData();
-    formData.append('clientEmail', data.clientEmail);
+    
+    // Add client information based on what's provided
+    if (data.clientId) {
+      formData.append('clientId', data.clientId);
+    }
+    if (data.clientEmail) {
+      formData.append('clientEmail', data.clientEmail);
+    }
+    if (data.clientName) {
+      formData.append('clientName', data.clientName);
+    }
+    
     if (data.message) {
       formData.append('message', data.message);
     }
+    if (data.captions) {
+      formData.append('captions', data.captions);
+    }
+    
     data.files.forEach((file) => {
       formData.append('files', file);
     });

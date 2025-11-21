@@ -60,6 +60,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ThumbsUpApi.Repositories.ISubmissionRepository, ThumbsUpApi.Repositories.SubmissionRepository>();
 builder.Services.AddScoped<ThumbsUpApi.Repositories.IReviewRepository, ThumbsUpApi.Repositories.ReviewRepository>();
 builder.Services.AddScoped<ThumbsUpApi.Repositories.IUserRepository, ThumbsUpApi.Repositories.UserRepository>();
+builder.Services.AddScoped<ThumbsUpApi.Repositories.IClientRepository, ThumbsUpApi.Repositories.ClientRepository>();
 
 // Add Mappers
 builder.Services.AddScoped<ThumbsUpApi.Mappers.SubmissionMapper>();
