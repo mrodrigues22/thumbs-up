@@ -90,7 +90,7 @@ export default function SubmissionsPage() {
           submissions={filteredSubmissions}
           isLoading={isLoading || isDeleting}
           isError={isError}
-          error={error}
+          error={error ? new Error(error.message) : null}
           onDelete={handleDelete}
           onRetry={refetch}
           emptyMessage="No submissions found. Create your first one to get started!"
