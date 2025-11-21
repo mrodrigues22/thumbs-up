@@ -53,8 +53,8 @@ export default function LandingPage() {
           <span className="block text-blue-600 dark:text-blue-400">The Easy Way</span>
         </h1>
         <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
-          Share your creative work, collect client reviews, and manage feedback all in one place. 
-          Streamline your approval process with Thumbs Up.
+          Share your creative work, collect client reviews, and get AI-powered insights. 
+          Streamline your approval process and predict client preferences with Thumbs Up.
         </p>
         <div className="flex gap-4 justify-center">
           <Link to="/register">
@@ -67,6 +67,55 @@ export default function LandingPage() {
               View Pricing
             </Button>
           </a>
+        </div>
+      </section>
+
+      {/* AI Features Section */}
+      <section className="bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-900 dark:to-blue-900 py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <div className="text-5xl mb-4">🤖</div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              Powered by AI
+            </h2>
+            <p className="text-xl text-purple-100 max-w-3xl mx-auto">
+              Leverage artificial intelligence to understand your clients better and predict approval likelihood
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* AI Feature 1 */}
+            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 text-white">
+              <div className="text-4xl mb-4">📝</div>
+              <h3 className="text-xl font-semibold mb-3">
+                AI Review Summaries
+              </h3>
+              <p className="text-purple-100">
+                Get instant AI-generated summaries of all your client's reviews and feedback, saving you time and highlighting key insights.
+              </p>
+            </div>
+
+            {/* AI Feature 2 */}
+            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 text-white">
+              <div className="text-4xl mb-4">🎨</div>
+              <h3 className="text-xl font-semibold mb-3">
+                Style & Preference Analysis
+              </h3>
+              <p className="text-purple-100">
+                Our AI learns your client's preferences and style from their past reviews, giving you deep insights into what they love.
+              </p>
+            </div>
+
+            {/* AI Feature 3 */}
+            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 text-white">
+              <div className="text-4xl mb-4">🎯</div>
+              <h3 className="text-xl font-semibold mb-3">
+                Approval Predictions
+              </h3>
+              <p className="text-purple-100">
+                Before submitting, get AI predictions on the likelihood of client approval based on their historical preferences and feedback patterns.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -263,6 +312,10 @@ export default function LandingPage() {
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
+                <span className="text-gray-600 dark:text-gray-300">AI insights & predictions</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-green-500 mr-2">✓</span>
                 <span className="text-gray-600 dark:text-gray-300">Priority support</span>
               </li>
               <li className="flex items-start">
@@ -298,7 +351,7 @@ export default function LandingPage() {
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Advanced analytics</span>
+                <span className="text-gray-600 dark:text-gray-300">Advanced AI analytics</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
@@ -321,7 +374,7 @@ export default function LandingPage() {
             Ready to Streamline Your Feedback Process?
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Join hundreds of creatives who trust Thumbs Up for client reviews
+            Join hundreds of creatives using AI-powered insights to understand their clients better
           </p>
           <Link to="/register">
             <Button variant="secondary" size="large">
