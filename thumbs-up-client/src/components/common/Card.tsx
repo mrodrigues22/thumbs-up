@@ -10,6 +10,7 @@ interface CardProps extends BaseComponentProps {
   subtitle?: string;
   footer?: React.ReactNode;
   padding?: 'none' | 'small' | 'medium' | 'large';
+  onClick?: () => void;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -19,6 +20,7 @@ export const Card: React.FC<CardProps> = ({
   footer,
   padding = 'medium',
   className = '',
+  onClick,
 }) => {
   const paddingClasses = {
     none: '',
@@ -28,7 +30,13 @@ export const Card: React.FC<CardProps> = ({
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-md ${className}`}>
+    <div 
+      className={`bg-white rounded-lg shadow-md ${className}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => e.key === 'Enter' && onClick() : undefined}
+    >
       {(title || subtitle) && (
         <div className={`border-b border-gray-200 ${paddingClasses[padding]}`}>
           {title && <h3 className="text-lg font-semibold text-gray-900">{title}</h3>}
