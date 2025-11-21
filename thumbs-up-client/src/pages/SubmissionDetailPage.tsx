@@ -11,11 +11,13 @@ import { SubmissionStatusBadge } from '../components/submissions';
 import { useSubmissionDetail, useDeleteSubmission } from '../hooks/submissions';
 import { MediaFileType } from '../shared/types';
 import { toast } from 'react-toastify';
+import { useAuthStore } from '../stores/authStore';
 
 export default function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const { user } = useAuthStore();
 
   const { submission, isLoading, isError, error, refetch } = useSubmissionDetail({
     id: id!,
@@ -252,9 +254,23 @@ export default function SubmissionDetailPage() {
                   <Button
                     fullWidth
                     variant="primary"
-                    onClick={handleCopyLink}
+                    onClick={() => {
+                      const reviewLink = `${window.location.origin}/review/${submission.accessToken}`;
+                      const userName = user?.firstName && user?.lastName 
+                        ? `${user.firstName} ${user.lastName}`
+                        : user?.firstName || user?.lastName || user?.email || 'Your content provider';
+                      const senderName = user?.companyName || userName;
+                      
+                      // WhatsApp formatting: *bold*, _italic_, ~strikethrough~, ```monospace```
+                      const message = submission.accessPassword 
+                        ? `Hello! 👋\n\nThis is *${senderName}*\n\nPlease review your media files:\n\n🔗 *Link:*\n${reviewLink}\n\n🔐 *Access Password:*\n\`\`\`${submission.accessPassword}\`\`\`\n\nLooking forward to your feedback!`
+                        : `Hello! 👋\n\nThis is *${senderName}*\n\nPlease review your media files:\n\n🔗 *Link:*\n${reviewLink}\n\nLooking forward to your feedback!`;
+                      
+                      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                      window.open(whatsappUrl, '_blank');
+                    }}
                   >
-                    Copy Review Link
+                    Share via WhatsApp
                   </Button>
                 </div>
               </Card>
