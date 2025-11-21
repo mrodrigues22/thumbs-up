@@ -12,6 +12,8 @@ interface InputProps extends FormFieldProps {
   placeholder?: string;
   disabled?: boolean;
   autoComplete?: string;
+  minLength?: number;
+  maxLength?: number;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -26,6 +28,8 @@ export const Input: React.FC<InputProps> = ({
   helperText,
   disabled = false,
   autoComplete,
+  minLength,
+  maxLength,
 }) => {
   return (
     <div className="mb-4">
@@ -43,6 +47,8 @@ export const Input: React.FC<InputProps> = ({
         required={required}
         disabled={disabled}
         autoComplete={autoComplete}
+        minLength={minLength}
+        maxLength={maxLength}
         className={`input-field ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
       />
       {helperText && !error && (

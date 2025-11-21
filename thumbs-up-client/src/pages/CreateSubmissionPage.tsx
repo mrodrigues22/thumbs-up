@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/layout';
-import { Card, Button, Input, Textarea } from '../components/common';
+import { Card, Button, Input, Textarea, ErrorMessage } from '../components/common';
 import { useCreateSubmission } from '../hooks/submissions';
-import type { CreateSubmissionRequest } from '../shared/types';
 import { submissionService } from '../services/submissionService';
+import { toast } from 'react-toastify';
 
 export default function CreateSubmissionPage() {
   const navigate = useNavigate();
@@ -47,103 +47,276 @@ export default function CreateSubmissionPage() {
       
       setSuccess(true);
       setReviewLink(`${window.location.origin}/review/${response.accessToken}`);
+      toast.success('Submission created successfully!');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create submission');
+      const errorMessage = err.response?.data?.message || 'Failed to create submission';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard!');
+  };
+
   if (success) {
     return (
-      <div style={{ maxWidth: '600px', margin: '50px auto', padding: '20px' }}>
-        <h1>Submission Created!</h1>
-        <p>Your submission has been created successfully.</p>
-        <div style={{ backgroundColor: '#f0f0f0', padding: '15px', marginTop: '20px', borderRadius: '5px' }}>
-          <p><strong>Review Link:</strong></p>
-          <input
-            type="text"
-            value={reviewLink}
-            readOnly
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
-          <p style={{ marginTop: '15px' }}><strong>Access Password:</strong> {formData.accessPassword}</p>
+      <Layout>
+        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto">
+            {/* Success Header */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900">Submission Created!</h1>
+              <p className="mt-2 text-gray-600">Your submission has been created successfully.</p>
+            </div>
+
+            {/* Review Details Card */}
+            <Card>
+              <div className="space-y-6">
+                {/* Review Link Section */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Review Link
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={reviewLink}
+                      readOnly
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm font-mono"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => copyToClipboard(reviewLink)}
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Password Section */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Access Password
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.accessPassword}
+                      readOnly
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm font-mono"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => copyToClipboard(formData.accessPassword)}
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                  <div className="flex">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <h3 className="text-sm font-medium text-blue-900 mb-1">Next Steps</h3>
+                      <p className="text-sm text-blue-700">
+                        Share both the review link and password with your client. They will need both to access and review the media files.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    variant="primary"
+                    fullWidth
+                    onClick={() => navigate('/dashboard')}
+                  >
+                    Back to Dashboard
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    fullWidth
+                    onClick={() => {
+                      setSuccess(false);
+                      setFormData({ clientEmail: '', accessPassword: '', message: '' });
+                      setFiles([]);
+                      setReviewLink('');
+                    }}
+                  >
+                    Create Another
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
-        <p style={{ marginTop: '20px', color: '#666' }}>
-          Share this link and password with your client to review the media.
-        </p>
-        <button onClick={() => navigate('/dashboard')} style={{ padding: '10px 20px', marginTop: '20px' }}>
-          Back to Dashboard
-        </button>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div style={{ maxWidth: '600px', margin: '50px auto', padding: '20px' }}>
-      <h1>Create Submission</h1>
-      <form onSubmit={handleSubmit}>
-        {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
-        
-        <div style={{ marginBottom: '15px' }}>
-          <label>Client Email:</label>
-          <input
-            type="email"
-            value={formData.clientEmail}
-            onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })}
-            required
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
-        </div>
-
-        <div style={{ marginBottom: '15px' }}>
-          <label>Access Password (min 4 characters):</label>
-          <input
-            type="text"
-            value={formData.accessPassword}
-            onChange={(e) => setFormData({ ...formData, accessPassword: e.target.value })}
-            required
-            minLength={4}
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
-          <small>This password will be shared with the client to access the review.</small>
-        </div>
-
-        <div style={{ marginBottom: '15px' }}>
-          <label>Message (optional):</label>
-          <textarea
-            value={formData.message}
-            onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-            rows={4}
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
-        </div>
-
-        <div style={{ marginBottom: '15px' }}>
-          <label>Upload Files (images or videos, same type only):</label>
-          <input
-            type="file"
-            onChange={handleFileChange}
-            multiple
-            accept="image/*,video/*"
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
-          {files.length > 0 && (
-            <p style={{ marginTop: '5px', color: '#666' }}>
-              {files.length} file(s) selected
+    <Layout>
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Create Submission</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Upload files for your client to review and approve
             </p>
-          )}
-        </div>
+          </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button type="submit" disabled={loading} style={{ padding: '10px 20px' }}>
-            {loading ? 'Creating...' : 'Create Submission'}
-          </button>
-          <button type="button" onClick={() => navigate('/dashboard')} style={{ padding: '10px 20px' }}>
-            Cancel
-          </button>
+          {/* Form Card */}
+          <Card>
+            {error && (
+              <ErrorMessage error={error} className="mb-6" />
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Client Email */}
+              <Input
+                label="Client Email"
+                name="clientEmail"
+                type="email"
+                value={formData.clientEmail}
+                onChange={(value) => setFormData({ ...formData, clientEmail: value })}
+                required
+                placeholder="client@example.com"
+                helperText="The email address of your client"
+              />
+
+              {/* Access Password */}
+              <Input
+                label="Access Password"
+                name="accessPassword"
+                type="text"
+                value={formData.accessPassword}
+                onChange={(value) => setFormData({ ...formData, accessPassword: value })}
+                required
+                minLength={4}
+                placeholder="Enter a secure password"
+                helperText="Minimum 4 characters. Share this with your client to access the review."
+              />
+
+              {/* Message */}
+              <Textarea
+                label="Message (Optional)"
+                name="message"
+                value={formData.message}
+                onChange={(value) => setFormData({ ...formData, message: value })}
+                rows={4}
+                placeholder="Add a message for your client..."
+                helperText="Include any context or instructions for your client"
+              />
+
+              {/* File Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload Files
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
+                  <div className="space-y-1 text-center">
+                    <svg
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      stroke="currentColor"
+                      fill="none"
+                      viewBox="0 0 48 48"
+                    >
+                      <path
+                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <div className="flex text-sm text-gray-600">
+                      <label
+                        htmlFor="file-upload"
+                        className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                      >
+                        <span>Upload files</span>
+                        <input
+                          id="file-upload"
+                          name="file-upload"
+                          type="file"
+                          onChange={handleFileChange}
+                          multiple
+                          accept="image/*,video/*"
+                          className="sr-only"
+                        />
+                      </label>
+                      <p className="pl-1">or drag and drop</p>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Images or videos (same type only)
+                    </p>
+                  </div>
+                </div>
+                {files.length > 0 && (
+                  <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      {files.length} file(s) selected:
+                    </p>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      {files.map((file, index) => (
+                        <li key={index} className="flex items-center">
+                          <svg className="w-4 h-4 text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                          {file.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  fullWidth
+                  loading={loading}
+                  disabled={loading || files.length === 0}
+                >
+                  Create Submission
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  fullWidth
+                  onClick={() => navigate('/dashboard')}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </Card>
         </div>
-      </form>
-    </div>
+      </div>
+    </Layout>
   );
 }
