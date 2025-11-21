@@ -54,11 +54,13 @@ export default function RegisterPage() {
         <div className="max-w-md w-full">
           {/* Header */}
           <div className="text-center mb-8">
-            <img 
-                            src={isDarkMode ? "/logo-light.svg" : "/logo.svg"}
-                            className="h-12 cursor-pointer mx-auto" 
-                            alt="Logo" 
-                        />
+            <Link to="/">
+              <img 
+                              src={isDarkMode ? "/logo-light.svg" : "/logo.svg"}
+                              className="h-12 cursor-pointer mx-auto" 
+                              alt="Logo" 
+                          />
+            </Link>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
               Create your account
             </p>
@@ -137,11 +139,16 @@ export default function RegisterPage() {
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center space-y-3">
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Already have an account?{' '}
                 <Link to="/login" className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
                   Sign in here
+                </Link>
+              </p>
+              <p className="text-sm">
+                <Link to="/" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                  ← Back to home
                 </Link>
               </p>
             </div>
