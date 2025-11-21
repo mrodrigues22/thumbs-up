@@ -34,6 +34,7 @@ public class AuthResponse
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? CompanyName { get; set; }
+    public string? ProfilePictureUrl { get; set; }
     public DateTime ExpiresAt { get; set; }
 }
 
@@ -50,4 +51,5 @@ public class UserProfileResponse
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? CompanyName { get; set; }
+    public string? ProfilePictureUrl { get; set; }
 }

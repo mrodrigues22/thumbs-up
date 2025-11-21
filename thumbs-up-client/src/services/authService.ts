@@ -17,6 +17,17 @@ export const authService = {
     return response.data;
   },
 
+  async uploadProfilePicture(file: File): Promise<{ profilePictureUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<{ profilePictureUrl: string }>('/auth/profile/picture', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
   logout() {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');

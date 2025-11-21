@@ -41,6 +41,7 @@ export interface User {
   firstName?: string;
   lastName?: string;
   companyName?: string;
+  profilePictureUrl?: string;
   role?: UserRole;
 }
 
@@ -50,6 +51,7 @@ export interface AuthResponse {
   firstName?: string;
   lastName?: string;
   companyName?: string;
+  profilePictureUrl?: string;
   role?: UserRole;
   expiresAt: string;
 }
@@ -78,6 +80,7 @@ export interface UserProfileResponse {
   firstName?: string;
   lastName?: string;
   companyName?: string;
+  profilePictureUrl?: string;
 }
 
 // ===== Media File Types =====

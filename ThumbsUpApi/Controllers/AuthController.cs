@@ -1,12 +1,14 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
+using ThumbsUpApi.Services;
 
 namespace ThumbsUpApi.Controllers;
 
@@ -19,19 +21,22 @@ public class AuthController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
     private readonly IUserRepository _userRepository;
+    private readonly IFileStorageService _fileStorageService;
     
     public AuthController(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         IConfiguration configuration,
         ILogger<AuthController> logger,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IFileStorageService fileStorageService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _configuration = configuration;
         _logger = logger;
         _userRepository = userRepository;
+        _fileStorageService = fileStorageService;
     }
     
     [HttpPost("register")]
@@ -68,6 +73,7 @@ public class AuthController : ControllerBase
             FirstName = user.FirstName,
             LastName = user.LastName,
             CompanyName = user.CompanyName,
+            ProfilePictureUrl = user.ProfilePictureUrl,
             ExpiresAt = DateTime.UtcNow.AddHours(GetTokenExpirationHours())
         });
     }
@@ -102,6 +108,7 @@ public class AuthController : ControllerBase
             FirstName = user.FirstName,
             LastName = user.LastName,
             CompanyName = user.CompanyName,
+            ProfilePictureUrl = user.ProfilePictureUrl,
             ExpiresAt = DateTime.UtcNow.AddHours(GetTokenExpirationHours())
         });
     }
@@ -163,7 +170,52 @@ public class AuthController : ControllerBase
             Email = user.Email!,
             FirstName = user.FirstName,
             LastName = user.LastName,
-            CompanyName = user.CompanyName
+            CompanyName = user.CompanyName,
+            ProfilePictureUrl = user.ProfilePictureUrl
         });
+    }
+
+    [Authorize]
+    [HttpPost("profile/picture")]
+    public async Task<IActionResult> UploadProfilePicture(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "No file uploaded" });
+
+        // Validate file type
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+        var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(fileExtension))
+            return BadRequest(new { message = "Invalid file type. Only images are allowed." });
+
+        // Validate file size (max 5MB)
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { message = "File size exceeds 5MB limit" });
+
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+            return NotFound(new { message = "User not found" });
+
+        // Delete old profile picture if exists
+        if (!string.IsNullOrEmpty(user.ProfilePictureUrl))
+        {
+            await _fileStorageService.DeleteAsync(user.ProfilePictureUrl);
+        }
+
+        // Upload new profile picture
+        var filePath = await _fileStorageService.UploadAsync(file, "profile-pictures");
+        var fileUrl = _fileStorageService.GetFileUrl(filePath);
+
+        // Update user's profile picture URL
+        user.ProfilePictureUrl = fileUrl;
+        await _userRepository.UpdateAsync(user);
+
+        _logger.LogInformation("User {UserId} updated their profile picture", userId);
+
+        return Ok(new { profilePictureUrl = fileUrl });
     }
 }

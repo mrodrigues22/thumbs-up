@@ -74,9 +74,20 @@ export const Navbar: React.FC = () => {
               <>
                 <Link 
                   to="/profile" 
-                  className="text-sm text-gray-600 hover:text-primary transition-colors"
+                  className="flex items-center space-x-2 text-sm text-gray-600 hover:text-primary transition-colors"
                 >
-                  {user?.firstName || user?.email}
+                  {user?.profilePictureUrl ? (
+                    <img 
+                      src={user.profilePictureUrl} 
+                      alt="Profile" 
+                      className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-sm font-medium border-2 border-gray-200">
+                      {user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  )}
+                  <span>{user?.firstName || user?.email}</span>
                 </Link>
                 <Button onClick={handleLogout} variant="ghost" size="small">
                   Logout
