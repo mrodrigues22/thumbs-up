@@ -40,7 +40,7 @@ export default function ClientReviewPage() {
   };
 
   const handleReviewSubmit = async () => {
-    if (!token || !selectedStatus) return;
+    if (!token || selectedStatus === null) return;
 
     setError('');
     setLoading(true);
@@ -295,7 +295,7 @@ export default function ClientReviewPage() {
                 variant="primary"
                 fullWidth
                 loading={loading}
-                disabled={loading || !selectedStatus}
+                disabled={loading || selectedStatus === null}
               >
                 Submit Review
               </Button>
