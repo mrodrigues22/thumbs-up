@@ -17,6 +17,7 @@ export default function ClientReviewPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,37 +244,112 @@ export default function ClientReviewPage() {
             </Card>
           )}
 
-          {/* Media Files */}
+          {/* Media Files Carousel */}
           <Card className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
               Media Files ({submission.mediaFiles.length})
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {submission.mediaFiles.map((file) => (
-                <div key={file.id} className="group relative bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="aspect-w-16 aspect-h-12 bg-gray-100">
-                    {file.fileType === MediaFileType.Image ? (
+            
+            {submission.mediaFiles.length === 1 ? (
+              // Single image - no carousel needed
+              <div className="bg-gray-100 rounded-lg overflow-hidden">
+                <div className="relative" style={{ paddingBottom: '75%' }}>
+                  {submission.mediaFiles[0].fileType === MediaFileType.Image ? (
+                    <img 
+                      src={submission.mediaFiles[0].fileUrl} 
+                      alt={submission.mediaFiles[0].fileName} 
+                      className="absolute inset-0 w-full h-full object-contain"
+                    />
+                  ) : (
+                    <video 
+                      src={submission.mediaFiles[0].fileUrl} 
+                      controls 
+                      className="absolute inset-0 w-full h-full object-contain"
+                    />
+                  )}
+                </div>
+                <div className="p-3 bg-white">
+                  <p className="text-sm text-gray-600 truncate" title={submission.mediaFiles[0].fileName}>
+                    {submission.mediaFiles[0].fileName}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // Multiple images - Instagram-style carousel
+              <div className="relative">
+                {/* Main carousel container */}
+                <div className="bg-gray-100 rounded-lg overflow-hidden">
+                  <div className="relative" style={{ paddingBottom: '75%' }}>
+                    {submission.mediaFiles[currentMediaIndex].fileType === MediaFileType.Image ? (
                       <img 
-                        src={file.fileUrl} 
-                        alt={file.fileName} 
-                        className="w-full h-full object-cover"
+                        src={submission.mediaFiles[currentMediaIndex].fileUrl} 
+                        alt={submission.mediaFiles[currentMediaIndex].fileName} 
+                        className="absolute inset-0 w-full h-full object-contain"
                       />
                     ) : (
                       <video 
-                        src={file.fileUrl} 
+                        src={submission.mediaFiles[currentMediaIndex].fileUrl} 
                         controls 
-                        className="w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-contain"
                       />
                     )}
+                    
+                    {/* Navigation arrows */}
+                    {currentMediaIndex > 0 && (
+                      <button
+                        onClick={() => setCurrentMediaIndex(currentMediaIndex - 1)}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all z-10"
+                        aria-label="Previous image"
+                      >
+                        <svg className="w-6 h-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                    )}
+                    
+                    {currentMediaIndex < submission.mediaFiles.length - 1 && (
+                      <button
+                        onClick={() => setCurrentMediaIndex(currentMediaIndex + 1)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all z-10"
+                        aria-label="Next image"
+                      >
+                        <svg className="w-6 h-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    )}
+
+                    {/* Counter indicator (top right) */}
+                    <div className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-medium">
+                      {currentMediaIndex + 1} / {submission.mediaFiles.length}
+                    </div>
                   </div>
-                  <div className="p-3">
-                    <p className="text-xs text-gray-600 truncate" title={file.fileName}>
-                      {file.fileName}
+                  
+                  {/* File name */}
+                  <div className="p-3 bg-white">
+                    <p className="text-sm text-gray-600 truncate" title={submission.mediaFiles[currentMediaIndex].fileName}>
+                      {submission.mediaFiles[currentMediaIndex].fileName}
                     </p>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Dots indicator */}
+                <div className="flex justify-center gap-2 mt-4">
+                  {submission.mediaFiles.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentMediaIndex(index)}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        index === currentMediaIndex 
+                          ? 'bg-blue-600 w-8' 
+                          : 'bg-gray-300 hover:bg-gray-400'
+                      }`}
+                      aria-label={`Go to image ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Review Form */}
