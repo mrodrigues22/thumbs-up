@@ -20,6 +20,7 @@ public class SubmissionMapper
             Id = submission.Id,
             ClientEmail = submission.ClientEmail,
             AccessToken = submission.AccessToken,
+            AccessPassword = submission.AccessPassword,
             Message = submission.Message,
             Status = submission.Status,
             CreatedAt = submission.CreatedAt,

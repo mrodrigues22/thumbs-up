@@ -76,6 +76,7 @@ public class SubmissionController : ControllerBase
             ClientEmail = request.ClientEmail,
             AccessToken = GenerateAccessToken(),
             AccessPasswordHash = BCrypt.Net.BCrypt.HashPassword(accessPassword),
+            AccessPassword = accessPassword,
             Message = request.Message,
             Captions = request.Captions,
             Status = SubmissionStatus.Pending,

@@ -195,9 +195,21 @@ export default function SubmissionDetailPage() {
                     className="input-field text-xs"
                   />
                 </div>
+                {submission.accessPassword && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Access Password
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={submission.accessPassword}
+                      className="input-field font-mono"
+                    />
+                  </div>
+                )}
                 <p className="text-xs text-gray-500">
-                  Share this link with your client to review the media files. They will need
-                  the access password you created.
+                  Share this link and password with your client to review the media files.
                 </p>
               </div>
             </Card>

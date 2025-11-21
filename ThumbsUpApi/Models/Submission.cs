@@ -19,6 +19,9 @@ public class Submission
     [Required]
     public string AccessPasswordHash { get; set; } = string.Empty;
     
+    [Required]
+    public string AccessPassword { get; set; } = string.Empty;
+    
     public string? Message { get; set; }
     
     public string? Captions { get; set; }
