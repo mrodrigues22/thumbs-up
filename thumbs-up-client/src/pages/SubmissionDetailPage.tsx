@@ -3,16 +3,19 @@
  * View details of a single submission
  */
 
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/layout';
 import { Card, Button, LoadingSpinner, ErrorMessage } from '../components/common';
-import { SubmissionStatusBadge, MediaGallery } from '../components/submissions';
+import { SubmissionStatusBadge } from '../components/submissions';
 import { useSubmissionDetail, useDeleteSubmission } from '../hooks/submissions';
+import { MediaFileType } from '../shared/types';
 import { toast } from 'react-toastify';
 
 export default function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
   const { submission, isLoading, isError, error, refetch } = useSubmissionDetail({
     id: id!,
@@ -66,12 +69,12 @@ export default function SubmissionDetailPage() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <button
             onClick={() => navigate('/dashboard')}
-            className="text-blue-600 hover:text-blue-700 mb-4 inline-flex items-center"
+            className="text-blue-600 hover:text-blue-700 mb-3 inline-flex items-center"
           >
             <svg
               className="w-5 h-5 mr-2"
@@ -155,43 +158,25 @@ export default function SubmissionDetailPage() {
               </dl>
             </Card>
 
-            {/* Media Files */}
-            <Card title={`Media Files (${submission.mediaFiles.length})`}>
-              {submission.mediaFiles.length > 0 ? (
-                <MediaGallery mediaFiles={submission.mediaFiles} />
-              ) : (
-                <p className="text-sm text-gray-500">No media files uploaded.</p>
-              )}
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Actions */}
-            <Card title="Actions">
-              <div className="space-y-3">
-                {!submission.review && (
+            {/* Actions - Show at bottom if reviewed */}
+            {submission.review && (
+              <Card title="Actions">
+                <div className="space-y-3">
                   <Button
                     fullWidth
-                    variant="primary"
-                    onClick={handleCopyLink}
+                    variant="danger"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    loading={isDeleting}
                   >
-                    Copy Review Link
+                    Delete Submission
                   </Button>
-                )}
-                <Button
-                  fullWidth
-                  variant="danger"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  loading={isDeleting}
-                >
-                  Delete Submission
-                </Button>
-              </div>
-            </Card>
+                </div>
+              </Card>
+            )}
+          </div>
 
-            {/* Share Info - Only show if not reviewed */}
+          {/* Share Info - Only show if not reviewed */}
             {!submission.review && (
               <Card title="Share with Client">
                 <div className="space-y-3">
@@ -264,6 +249,127 @@ export default function SubmissionDetailPage() {
                   <p className="text-xs text-gray-500">
                     Share this link and password with your client to review the media files.
                   </p>
+                  <Button
+                    fullWidth
+                    variant="primary"
+                    onClick={handleCopyLink}
+                  >
+                    Copy Review Link
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Media Files Carousel */}
+            <Card title={`Content (${submission.mediaFiles.length})`}>
+              {submission.mediaFiles.length === 0 ? (
+                <p className="text-sm text-gray-500">No media files uploaded.</p>
+              ) : submission.mediaFiles.length === 1 ? (
+                // Single media - no carousel needed
+                <div className="bg-gray-100 rounded-lg overflow-hidden">
+                  <div className="relative" style={{ paddingBottom: '75%' }}>
+                    {submission.mediaFiles[0].fileType === MediaFileType.Image ? (
+                      <img 
+                        src={submission.mediaFiles[0].fileUrl} 
+                        alt={submission.mediaFiles[0].fileName} 
+                        className="absolute inset-0 w-full h-full object-contain"
+                      />
+                    ) : (
+                      <video 
+                        src={submission.mediaFiles[0].fileUrl} 
+                        controls 
+                        className="absolute inset-0 w-full h-full object-contain"
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                // Multiple media - Instagram-style carousel
+                <div className="relative">
+                  <div className="bg-gray-100 rounded-lg overflow-hidden">
+                    <div className="relative" style={{ paddingBottom: '75%' }}>
+                      {submission.mediaFiles[currentMediaIndex].fileType === MediaFileType.Image ? (
+                        <img 
+                          src={submission.mediaFiles[currentMediaIndex].fileUrl} 
+                          alt={submission.mediaFiles[currentMediaIndex].fileName} 
+                          className="absolute inset-0 w-full h-full object-contain"
+                        />
+                      ) : (
+                        <video 
+                          src={submission.mediaFiles[currentMediaIndex].fileUrl} 
+                          controls 
+                          className="absolute inset-0 w-full h-full object-contain"
+                        />
+                      )}
+                      
+                      {/* Navigation arrows */}
+                      {currentMediaIndex > 0 && (
+                        <button
+                          onClick={() => setCurrentMediaIndex(currentMediaIndex - 1)}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all z-10"
+                          aria-label="Previous media"
+                        >
+                          <svg className="w-5 h-5 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                      )}
+                      
+                      {currentMediaIndex < submission.mediaFiles.length - 1 && (
+                        <button
+                          onClick={() => setCurrentMediaIndex(currentMediaIndex + 1)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all z-10"
+                          aria-label="Next media"
+                        >
+                          <svg className="w-5 h-5 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      )}
+
+                      {/* Counter indicator */}
+                      <div className="absolute top-3 right-3 bg-black/60 text-white px-2.5 py-1 rounded-full text-xs font-medium">
+                        {currentMediaIndex + 1} / {submission.mediaFiles.length}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dots indicator */}
+                  <div className="flex justify-center gap-1.5 mt-3">
+                    {submission.mediaFiles.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentMediaIndex(index)}
+                        className={`w-1.5 h-1.5 rounded-full transition-all ${
+                          index === currentMediaIndex 
+                            ? 'bg-blue-600 w-6' 
+                            : 'bg-gray-300 hover:bg-gray-400'
+                        }`}
+                        aria-label={`Go to media ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+
+            
+
+            {/* Actions - Show in sidebar if not reviewed */}
+            {!submission.review && (
+              <Card title="Actions">
+                <div className="space-y-3">
+                  <Button
+                    fullWidth
+                    variant="danger"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    loading={isDeleting}
+                  >
+                    Delete Submission
+                  </Button>
                 </div>
               </Card>
             )}
