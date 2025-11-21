@@ -31,10 +31,18 @@ export function ClientCard({ client }: ClientCardProps) {
       <div className="flex items-center gap-3">
         {/* Avatar */}
         <div className="flex-shrink-0">
-          <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
-            <span className="text-primary-600 font-semibold text-lg">
-              {displayName.charAt(0).toUpperCase()}
-            </span>
+          <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden">
+            {client.profilePictureUrl ? (
+              <img 
+                src={client.profilePictureUrl} 
+                alt={displayName} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-primary-600 font-semibold text-lg">
+                {displayName.charAt(0).toUpperCase()}
+              </span>
+            )}
           </div>
         </div>
 
