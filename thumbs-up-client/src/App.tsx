@@ -30,6 +30,7 @@ import SubmissionsPage from './pages/SubmissionsPage';
 import SubmissionDetailPage from './pages/SubmissionDetailPage';
 import CreateSubmissionPage from './pages/CreateSubmissionPage';
 import ClientReviewPage from './pages/ClientReviewPage';
+import ClientsPage from './pages/ClientsPage';
 
 function App() {
   const { loadAuth, isLoading } = useAuthStore((state) => ({
@@ -84,6 +85,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <SubmissionDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clients"
+            element={
+              <ProtectedRoute>
+                <ClientsPage />
               </ProtectedRoute>
             }
           />

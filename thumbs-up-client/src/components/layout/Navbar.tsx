@@ -46,6 +46,16 @@ export const Navbar: React.FC = () => {
                 Dashboard
               </Link>
               <Link
+                to="/clients"
+                className={`transition-colors font-medium ${
+                  location.pathname === '/clients'
+                    ? 'text-primary'
+                    : 'text-gray-700 hover:text-primary'
+                }`}
+              >
+                Clients
+              </Link>
+              <Link
                 to="/submissions/create"
                 className={`transition-colors font-medium ${
                   location.pathname === '/submissions/create'
