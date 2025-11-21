@@ -52,6 +52,13 @@ export default function ClientReviewPage() {
   const handleReviewSubmit = async () => {
     if (!token || selectedStatus === null) return;
 
+    // Validate that comment is provided when rejecting
+    if (selectedStatus === ReviewStatus.Rejected && !comment.trim()) {
+      setError('A comment is required when rejecting a submission');
+      toast.error('A comment is required when rejecting a submission');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
@@ -405,13 +412,14 @@ export default function ClientReviewPage() {
 
               {/* Comment textarea */}
               <Textarea
-                label="Comment (Optional)"
+                label={selectedStatus === ReviewStatus.Rejected ? "Comment (Required)" : "Comment (Optional)"}
                 name="comment"
                 value={comment}
                 onChange={setComment}
                 rows={4}
                 placeholder="Add any feedback or comments..."
-                helperText="Your comment will be shared with the sender"
+                helperText={selectedStatus === ReviewStatus.Rejected ? "A comment is required when rejecting" : "Your comment will be shared with the sender"}
+                required={selectedStatus === ReviewStatus.Rejected}
               />
 
               {/* Submit button */}

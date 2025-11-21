@@ -130,6 +130,12 @@ public class ReviewController : ControllerBase
             return Unauthorized(new { message = "Invalid access password" });
         }
         
+        // Validate that comment is provided when rejecting
+        if (request.Status == ReviewStatus.Rejected && string.IsNullOrWhiteSpace(request.Comment))
+        {
+            return BadRequest(new { message = "A comment is required when rejecting a submission" });
+        }
+        
         // Create review
         var review = new Review
         {
