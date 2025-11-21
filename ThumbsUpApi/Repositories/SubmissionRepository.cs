@@ -25,6 +25,7 @@ public class SubmissionRepository : ISubmissionRepository
             .Include(s => s.MediaFiles)
             .Include(s => s.Review)
             .Include(s => s.CreatedBy)
+            .Include(s => s.Client)
             .FirstOrDefaultAsync(s => s.Id == id && s.CreatedById == userId);
     }
 
@@ -40,6 +41,7 @@ public class SubmissionRepository : ISubmissionRepository
             .Include(s => s.MediaFiles)
             .Include(s => s.Review)
             .Include(s => s.CreatedBy)
+            .Include(s => s.Client)
             .FirstOrDefaultAsync(s => s.AccessToken == token);
     }
 
@@ -49,6 +51,7 @@ public class SubmissionRepository : ISubmissionRepository
             .Include(s => s.MediaFiles)
             .Include(s => s.Review)
             .Include(s => s.CreatedBy)
+            .Include(s => s.Client)
             .Where(s => s.CreatedById == userId)
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync();

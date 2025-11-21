@@ -31,7 +31,9 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900">{submission.clientEmail}</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {submission.clientName || submission.clientEmail}
+            </h3>
             <p className="text-sm text-gray-500 mt-1">
               Created: {formatDate(submission.createdAt)}
             </p>
