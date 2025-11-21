@@ -208,32 +208,32 @@ export default function LandingPage() {
           Choose the plan that works for you
         </p>
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {/* Free Plan */}
+          {/* Starter Plan */}
           <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-lg border-2 border-gray-200 dark:border-gray-700">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Free</h3>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Starter</h3>
             <div className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-              $0<span className="text-lg text-gray-600 dark:text-gray-400">/month</span>
+              $9<span className="text-lg text-gray-600 dark:text-gray-400">/month</span>
             </div>
             <ul className="space-y-3 mb-8">
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Up to 5 submissions</span>
+                <span className="text-gray-600 dark:text-gray-300">Up to 20 submissions</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">3 clients</span>
+                <span className="text-gray-600 dark:text-gray-300">10 clients</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">100MB storage</span>
+                <span className="text-gray-600 dark:text-gray-300">1GB storage</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Basic support</span>
+                <span className="text-gray-600 dark:text-gray-300">Email support</span>
               </li>
             </ul>
             <Link to="/register">
-              <Button variant="secondary" fullWidth>
+              <Button variant="primary" fullWidth>
                 Get Started
               </Button>
             </Link>
@@ -272,7 +272,7 @@ export default function LandingPage() {
             </ul>
             <Link to="/register">
               <Button variant="primary" fullWidth>
-                Start Free Trial
+                Get Started
               </Button>
             </Link>
           </div>
