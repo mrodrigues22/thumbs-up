@@ -27,6 +27,15 @@ export default function ClientReviewPage() {
 
     try {
       const data = await reviewService.getSubmissionByToken(token, password);
+      
+      // Check if already reviewed
+      if (data.review) {
+        setSubmission(data);
+        setAuthenticated(true);
+        // Show already reviewed state instead of the form
+        return;
+      }
+      
       setSubmission(data);
       setAuthenticated(true);
       toast.success('Access granted!');
@@ -134,6 +143,57 @@ export default function ClientReviewPage() {
               <div className="mt-6 text-center">
                 <p className="text-xs text-gray-500">
                   This password was provided by the sender
+                </p>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // If authenticated and submission has already been reviewed, show info message
+  if (authenticated && submission?.review) {
+    const isApproved = submission.review.status === ReviewStatus.Approved;
+    const reviewDate = new Date(submission.review.reviewedAt).toLocaleString();
+    
+    return (
+      <Layout showNavbar={false}>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-md w-full">
+            <Card>
+              <div className="text-center">
+                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
+                  isApproved ? 'bg-green-100' : 'bg-red-100'
+                }`}>
+                  {isApproved ? (
+                    <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  )}
+                </div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-4">Already Reviewed</h1>
+                <p className="text-gray-600 mb-4">
+                  This submission was already reviewed on {reviewDate}.
+                </p>
+                <div className="text-left bg-gray-50 rounded-lg p-4 mb-4">
+                  <p className="text-sm font-medium text-gray-700 mb-1">Review Status:</p>
+                  <p className={`text-lg font-semibold ${isApproved ? 'text-green-600' : 'text-red-600'}`}>
+                    {isApproved ? 'Approved' : 'Rejected'}
+                  </p>
+                  {submission.review.comment && (
+                    <>
+                      <p className="text-sm font-medium text-gray-700 mt-3 mb-1">Comment:</p>
+                      <p className="text-sm text-gray-600">{submission.review.comment}</p>
+                    </>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500">
+                  The sender has been notified of this review.
                 </p>
               </div>
             </Card>
