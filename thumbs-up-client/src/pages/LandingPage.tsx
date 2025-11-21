@@ -9,7 +9,7 @@ import { initializePaddle, type Paddle } from '@paddle/paddle-js';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/common';
-import { subscriptionService } from '../services/subscriptionService';
+import { subscriptionService, type SubscriptionPlan } from '../services/subscriptionService';
 
 export default function LandingPage() {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
@@ -17,6 +17,8 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
 
   useEffect(() => {
     // Initialize Paddle
@@ -28,6 +30,12 @@ export default function LandingPage() {
         setPaddle(paddleInstance);
       }
     });
+
+    // Load plans
+    subscriptionService.getPlans()
+      .then(setPlans)
+      .catch(console.error)
+      .finally(() => setPlansLoading(false));
   }, []);
 
   const handleGetStarted = async (tier: string, priceId: string) => {
@@ -311,124 +319,109 @@ export default function LandingPage() {
         <p className="text-center text-gray-600 dark:text-gray-300 mb-12">
           Choose the plan that works for you
         </p>
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {/* Starter Plan */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-lg border-2 border-gray-200 dark:border-gray-700">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Starter</h3>
-            <div className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-              $9<span className="text-lg text-gray-600 dark:text-gray-400">/month</span>
-            </div>
-            <ul className="space-y-3 mb-8">
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Up to 20 submissions</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">10 clients</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">1GB storage</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Email support</span>
-              </li>
-            </ul>
-            <Button 
-              variant="primary" 
-              fullWidth
-              onClick={() => handleGetStarted('Starter', 'pri_01test123starter')}
-              disabled={checkoutLoading === 'Starter'}
-            >
-              {checkoutLoading === 'Starter' ? 'Loading...' : 'Get Started'}
-            </Button>
+        
+        {plansLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
-
-          {/* Pro Plan */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-xl border-2 border-blue-600 relative transform scale-105">
-            <div className="absolute top-0 right-0 bg-blue-600 text-white px-3 py-1 text-sm font-semibold rounded-bl-lg rounded-tr-lg">
-              Popular
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Pro</h3>
-            <div className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-              $19<span className="text-lg text-gray-600 dark:text-gray-400">/month</span>
-            </div>
-            <ul className="space-y-3 mb-8">
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Unlimited submissions</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Unlimited clients</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">10GB storage</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">AI insights & predictions</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Priority support</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Custom branding</span>
-              </li>
-            </ul>
-            <Button 
-              variant="primary" 
-              fullWidth
-              onClick={() => handleGetStarted('Pro', 'pri_01test123pro')}
-              disabled={checkoutLoading === 'Pro'}
-            >
-              {checkoutLoading === 'Pro' ? 'Loading...' : 'Get Started'}
-            </Button>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {plans.map((plan) => {
+              const isPro = plan.tier === 'Pro';
+              const isEnterprise = plan.tier === 'Enterprise';
+              const storageGB = plan.storageLimitBytes / (1024 * 1024 * 1024);
+              
+              return (
+                <div 
+                  key={plan.tier}
+                  className={`bg-white dark:bg-gray-800 rounded-xl p-8 shadow-lg border-2 ${
+                    isPro 
+                      ? 'border-blue-600 shadow-xl transform scale-105' 
+                      : 'border-gray-200 dark:border-gray-700'
+                  } relative`}
+                >
+                  {isPro && (
+                    <div className="absolute top-0 right-0 bg-blue-600 text-white px-3 py-1 text-sm font-semibold rounded-bl-lg rounded-tr-lg">
+                      Popular
+                    </div>
+                  )}
+                  
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    {plan.tier}
+                  </h3>
+                  <div className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
+                    ${plan.price}
+                    <span className="text-lg text-gray-600 dark:text-gray-400">/{plan.interval}</span>
+                  </div>
+                  
+                  <ul className="space-y-3 mb-8">
+                    <li className="flex items-start">
+                      <span className="text-green-500 mr-2">✓</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {plan.submissionsLimit === -1 ? 'Unlimited' : `Up to ${plan.submissionsLimit}`} submissions
+                      </span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-green-500 mr-2">✓</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {plan.clientsLimit === -1 ? 'Unlimited' : plan.clientsLimit} clients
+                      </span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-green-500 mr-2">✓</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {storageGB}GB storage
+                      </span>
+                    </li>
+                    {plan.hasAiFeatures && (
+                      <li className="flex items-start">
+                        <span className="text-green-500 mr-2">✓</span>
+                        <span className="text-gray-600 dark:text-gray-300">AI insights & predictions</span>
+                      </li>
+                    )}
+                    {plan.hasCustomBranding && (
+                      <li className="flex items-start">
+                        <span className="text-green-500 mr-2">✓</span>
+                        <span className="text-gray-600 dark:text-gray-300">Custom branding</span>
+                      </li>
+                    )}
+                    <li className="flex items-start">
+                      <span className="text-green-500 mr-2">✓</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {isPro ? 'Priority' : isEnterprise ? 'Dedicated' : 'Email'} support
+                      </span>
+                    </li>
+                    {isEnterprise && (
+                      <>
+                        <li className="flex items-start">
+                          <span className="text-green-500 mr-2">✓</span>
+                          <span className="text-gray-600 dark:text-gray-300">Team collaboration</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-green-500 mr-2">✓</span>
+                          <span className="text-gray-600 dark:text-gray-300">Advanced AI analytics</span>
+                        </li>
+                      </>
+                    )}
+                  </ul>
+                  
+                  <Button 
+                    variant={isPro ? 'primary' : 'secondary'}
+                    fullWidth
+                    onClick={() => handleGetStarted(plan.tier, plan.priceId)}
+                    disabled={checkoutLoading === plan.tier}
+                  >
+                    {checkoutLoading === plan.tier 
+                      ? 'Loading...' 
+                      : isEnterprise 
+                        ? 'Contact Sales' 
+                        : 'Get Started'}
+                  </Button>
+                </div>
+              );
+            })}
           </div>
-
-          {/* Enterprise Plan */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-lg border-2 border-gray-200 dark:border-gray-700">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Enterprise</h3>
-            <div className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-              $99<span className="text-lg text-gray-600 dark:text-gray-400">/month</span>
-            </div>
-            <ul className="space-y-3 mb-8">
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Everything in Pro</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">100GB storage</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Team collaboration</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Advanced AI analytics</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Dedicated support</span>
-              </li>
-            </ul>
-            <Button 
-              variant="secondary" 
-              fullWidth
-              onClick={() => handleGetStarted('Enterprise', 'pri_01test123enterprise')}
-              disabled={checkoutLoading === 'Enterprise'}
-            >
-              {checkoutLoading === 'Enterprise' ? 'Loading...' : 'Contact Sales'}
-            </Button>
-          </div>
-        </div>
+        )}
       </section>
 
       {/* CTA Section */}

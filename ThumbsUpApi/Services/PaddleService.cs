@@ -46,15 +46,14 @@ public class PaddleService : IPaddleService
                 {
                     new { price_id = priceId, quantity = 1 }
                 },
-                customer = new
-                {
-                    id = userId
-                },
                 custom_data = new
                 {
                     user_id = userId
                 },
-                success_url = successUrl ?? _configuration["Paddle:DefaultSuccessUrl"]
+                checkout = new
+                {
+                    url = successUrl ?? _configuration["Paddle:DefaultSuccessUrl"]
+                }
             };
 
             var content = new StringContent(
@@ -62,10 +61,15 @@ public class PaddleService : IPaddleService
                 Encoding.UTF8, 
                 "application/json");
 
+            _logger.LogInformation("Creating Paddle checkout with payload: {Payload}", JsonSerializer.Serialize(payload));
+            
             var response = await _httpClient.PostAsync("/transactions", content);
+            
+            var responseData = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation("Paddle response status: {StatusCode}, body: {Body}", response.StatusCode, responseData);
+            
             response.EnsureSuccessStatusCode();
 
-            var responseData = await response.Content.ReadAsStringAsync();
             var result = JsonSerializer.Deserialize<JsonElement>(responseData);
 
             return new CheckoutResponse
