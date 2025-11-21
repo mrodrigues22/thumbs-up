@@ -435,7 +435,7 @@ export default function LandingPage() {
           </p>
           <Link to="/register">
             <Button variant="secondary" size="large">
-              Start Your Free Trial Today
+              Get Started Today
             </Button>
           </Link>
         </div>
