@@ -44,14 +44,14 @@ export const subscriptionService = {
    * Get current user's subscription status and usage
    */
   getStatus: async (): Promise<SubscriptionStatus> => {
-    return get<SubscriptionStatus>('/api/subscription/status');
+    return get<SubscriptionStatus>('/subscription/status');
   },
 
   /**
    * Create a checkout session for a specific price/plan
    */
   createCheckout: async (priceId: string, successUrl?: string): Promise<CheckoutResponse> => {
-    return post<CheckoutResponse>('/api/subscription/checkout', { 
+    return post<CheckoutResponse>('/subscription/checkout', { 
       priceId, 
       successUrl 
     });
@@ -61,34 +61,34 @@ export const subscriptionService = {
    * Cancel the current subscription
    */
   cancel: async (immediately: boolean = false): Promise<void> => {
-    return post('/api/subscription/cancel', { immediately });
+    return post('/subscription/cancel', { immediately });
   },
 
   /**
    * Reactivate a cancelled subscription
    */
   reactivate: async (): Promise<void> => {
-    return post('/api/subscription/reactivate');
+    return post('/subscription/reactivate');
   },
 
   /**
    * Upgrade/downgrade subscription to a new plan
    */
   upgrade: async (newPriceId: string): Promise<void> => {
-    return post('/api/subscription/upgrade', { newPriceId });
+    return post('/subscription/upgrade', { newPriceId });
   },
 
   /**
    * Get URL to update payment method
    */
   getPaymentMethodUrl: async (): Promise<{ url: string }> => {
-    return get('/api/subscription/payment-method-url');
+    return get('/subscription/payment-method-url');
   },
 
   /**
    * Get available subscription plans
    */
   getPlans: async (): Promise<SubscriptionPlan[]> => {
-    return get<SubscriptionPlan[]>('/api/subscription/plans');
+    return get<SubscriptionPlan[]>('/subscription/plans');
   },
 };
