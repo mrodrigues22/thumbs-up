@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom';
 import { Layout } from '../components/layout';
 import { Card, Button, Input, Textarea, ErrorMessage } from '../components/common';
 import { reviewService } from '../services/reviewService';
-import type { SubmissionResponse } from '../types';
-import { ReviewStatus, MediaFileType } from '../types';
+import type { SubmissionResponse } from '../shared/types';
+import { ReviewStatus, MediaFileType } from '../shared/types';
 import { toast } from 'react-toastify';
 
 export default function ClientReviewPage() {

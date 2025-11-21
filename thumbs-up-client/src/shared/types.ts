@@ -110,6 +110,7 @@ export interface SubmissionResponse {
   id: string;
   clientEmail: string;
   accessToken: string;
+  accessPassword?: string;
   message?: string;
   status: SubmissionStatus;
   createdAt: string;
@@ -121,7 +122,6 @@ export interface SubmissionResponse {
 
 export interface CreateSubmissionRequest {
   clientEmail: string;
-  accessPassword: string;
   message?: string;
   files: File[];
 }
@@ -225,7 +225,6 @@ export interface FormFieldProps {
 
 export interface SubmissionFormData {
   clientEmail: string;
-  accessPassword: string;
   message: string;
   files: File[];
 }

@@ -1,11 +1,10 @@
 import { api } from './api';
-import type { CreateSubmissionRequest, SubmissionResponse } from '../types';
+import type { CreateSubmissionRequest, SubmissionResponse } from '../shared/types';
 
 export const submissionService = {
   async createSubmission(data: CreateSubmissionRequest): Promise<SubmissionResponse> {
     const formData = new FormData();
     formData.append('clientEmail', data.clientEmail);
-    formData.append('accessPassword', data.accessPassword);
     if (data.message) {
       formData.append('message', data.message);
     }

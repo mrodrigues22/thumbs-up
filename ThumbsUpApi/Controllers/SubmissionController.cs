@@ -65,6 +65,9 @@ public class SubmissionController : ControllerBase
             return BadRequest(new { message = $"File size must not exceed {maxFileSize / 1048576}MB" });
         }
         
+        // Generate secure password
+        var accessPassword = GenerateAccessPassword();
+        
         // Create submission
         var submission = new Submission
         {
@@ -72,7 +75,7 @@ public class SubmissionController : ControllerBase
             CreatedById = userId,
             ClientEmail = request.ClientEmail,
             AccessToken = GenerateAccessToken(),
-            AccessPasswordHash = BCrypt.Net.BCrypt.HashPassword(request.AccessPassword),
+            AccessPasswordHash = BCrypt.Net.BCrypt.HashPassword(accessPassword),
             Message = request.Message,
             Status = SubmissionStatus.Pending,
             CreatedAt = DateTime.UtcNow,
@@ -116,13 +119,16 @@ public class SubmissionController : ControllerBase
         await _emailService.SendReviewLinkAsync(
             submission.ClientEmail,
             reviewLink,
-            request.AccessPassword,
+            accessPassword,
             submission.Message
         );
         
         _logger.LogInformation("Submission {SubmissionId} created by user {UserId}", submission.Id, userId);
         
-        return Ok(_mapper.ToResponse(submission));
+        var response = _mapper.ToResponse(submission);
+        response.AccessPassword = accessPassword;
+        
+        return Ok(response);
     }
     
     [HttpGet]
@@ -187,5 +193,13 @@ public class SubmissionController : ControllerBase
     private string GenerateAccessToken()
     {
         return Guid.NewGuid().ToString("N");
+    }
+    
+    private string GenerateAccessPassword()
+    {
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        var random = new Random();
+        return new string(Enumerable.Repeat(chars, 6)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
     }
 }

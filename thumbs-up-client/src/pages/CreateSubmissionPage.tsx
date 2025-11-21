@@ -11,7 +11,6 @@ export default function CreateSubmissionPage() {
   useCreateSubmission();
   const [formData, setFormData] = useState({
     clientEmail: '',
-    accessPassword: '',
     message: '',
   });
   const [files, setFiles] = useState<File[]>([]);
@@ -19,6 +18,7 @@ export default function CreateSubmissionPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [reviewLink, setReviewLink] = useState('');
+  const [accessPassword, setAccessPassword] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -47,6 +47,7 @@ export default function CreateSubmissionPage() {
       
       setSuccess(true);
       setReviewLink(`${window.location.origin}/review/${response.accessToken}`);
+      setAccessPassword(response.accessPassword || '');
       toast.success('Submission created successfully!');
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to create submission';
@@ -113,14 +114,14 @@ export default function CreateSubmissionPage() {
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      value={formData.accessPassword}
+                      value={accessPassword}
                       readOnly
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm font-mono"
                     />
                     <Button
                       variant="secondary"
                       size="small"
-                      onClick={() => copyToClipboard(formData.accessPassword)}
+                      onClick={() => copyToClipboard(accessPassword)}
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -158,9 +159,10 @@ export default function CreateSubmissionPage() {
                     fullWidth
                     onClick={() => {
                       setSuccess(false);
-                      setFormData({ clientEmail: '', accessPassword: '', message: '' });
+                      setFormData({ clientEmail: '', message: '' });
                       setFiles([]);
                       setReviewLink('');
+                      setAccessPassword('');
                     }}
                   >
                     Create Another
@@ -203,19 +205,6 @@ export default function CreateSubmissionPage() {
                 required
                 placeholder="client@example.com"
                 helperText="The email address of your client"
-              />
-
-              {/* Access Password */}
-              <Input
-                label="Access Password"
-                name="accessPassword"
-                type="text"
-                value={formData.accessPassword}
-                onChange={(value) => setFormData({ ...formData, accessPassword: value })}
-                required
-                minLength={4}
-                placeholder="Enter a secure password"
-                helperText="Minimum 4 characters. Share this with your client to access the review."
               />
 
               {/* Message */}

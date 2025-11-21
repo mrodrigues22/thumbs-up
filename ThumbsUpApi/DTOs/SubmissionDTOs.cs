@@ -9,10 +9,6 @@ public class CreateSubmissionRequest
     [EmailAddress]
     public string ClientEmail { get; set; } = string.Empty;
     
-    [Required]
-    [MinLength(4)]
-    public string AccessPassword { get; set; } = string.Empty;
-    
     public string? Message { get; set; }
     
     [Required]
@@ -24,6 +20,7 @@ public class SubmissionResponse
     public Guid Id { get; set; }
     public string ClientEmail { get; set; } = string.Empty;
     public string AccessToken { get; set; } = string.Empty;
+    public string? AccessPassword { get; set; }
     public string? Message { get; set; }
     public SubmissionStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }

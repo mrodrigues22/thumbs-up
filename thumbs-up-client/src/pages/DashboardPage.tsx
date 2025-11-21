@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { submissionService } from '../services/submissionService';
 import { useAuthStore } from '../stores/authStore';
-import type { SubmissionResponse } from '../types';
-import { SubmissionStatus } from '../types';
+import type { SubmissionResponse } from '../shared/types';
+import { SubmissionStatus } from '../shared/types';
 
 export default function DashboardPage() {
   const [submissions, setSubmissions] = useState<SubmissionResponse[]>([]);

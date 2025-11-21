@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { SubmissionResponse, SubmitReviewRequest, ValidateAccessRequest } from '../types';
+import type { SubmissionResponse, SubmitReviewRequest, ValidateAccessRequest } from '../shared/types';
 
 export const reviewService = {
   async validateAccess(data: ValidateAccessRequest): Promise<{ valid: boolean; message: string }> {
