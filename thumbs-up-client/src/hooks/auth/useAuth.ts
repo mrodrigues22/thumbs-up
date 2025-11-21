@@ -40,7 +40,7 @@ export const useAuth = (): UseAuthReturn => {
     const loginData: LoginRequest = { email, password };
     const response = await authService.login(loginData);
     setAuth(
-      { email: response.email, firstName: response.firstName, lastName: response.lastName, companyName: response.companyName },
+      { email: response.email, firstName: response.firstName, lastName: response.lastName, companyName: response.companyName, profilePictureUrl: response.profilePictureUrl },
       response.token,
       response.expiresAt
     );
@@ -59,7 +59,7 @@ export const useAuth = (): UseAuthReturn => {
     const registerData: RegisterRequest = { email, password, firstName, lastName, companyName };
     const response = await authService.register(registerData);
     setAuth(
-      { email: response.email, firstName: response.firstName, lastName: response.lastName, companyName: response.companyName },
+      { email: response.email, firstName: response.firstName, lastName: response.lastName, companyName: response.companyName, profilePictureUrl: response.profilePictureUrl },
       response.token,
       response.expiresAt
     );
