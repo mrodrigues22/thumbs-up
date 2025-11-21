@@ -7,14 +7,17 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/layout';
 import { clientService } from '../services/clientService';
+import { submissionService } from '../services/submissionService';
 import { Button, Card, LoadingSpinner, ErrorMessage, Modal, Input } from '../components/common';
-import type { Client, UpdateClientRequest } from '../shared/types';
+import type { Client, UpdateClientRequest, SubmissionResponse, SubmissionStatus } from '../shared/types';
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [client, setClient] = useState<Client | null>(null);
+  const [submissions, setSubmissions] = useState<SubmissionResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -27,6 +30,7 @@ export default function ClientDetailPage() {
   useEffect(() => {
     if (id) {
       loadClient();
+      loadSubmissions();
     }
   }, [id]);
 
@@ -45,9 +49,21 @@ export default function ClientDetailPage() {
       });
     } catch (err) {
       setError('Failed to load client details. Please try again.');
-      console.error('Error loading client:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSubmissions = async () => {
+    if (!id) return;
+    
+    try {
+      setLoadingSubmissions(true);
+      const data = await submissionService.getSubmissionsByClient(id);
+      setSubmissions(data);
+    } catch (err: any) {
+    } finally {
+      setLoadingSubmissions(false);
     }
   };
 
@@ -84,7 +100,6 @@ export default function ClientDetailPage() {
       handleCloseEditModal();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update client. Please try again.');
-      console.error('Error updating client:', err);
     } finally {
       setSubmitting(false);
     }
@@ -103,8 +118,26 @@ export default function ClientDetailPage() {
       navigate('/clients');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to delete client. Please try again.');
-      console.error('Error deleting client:', err);
     }
+  };
+
+  const handleCreateSubmission = () => {
+    navigate(`/submissions/new?clientId=${id}`);
+  };
+
+  const getStatusBadge = (status: SubmissionStatus) => {
+    const badges = {
+      0: { label: 'Pending', class: 'bg-yellow-100 text-yellow-800' },
+      1: { label: 'Approved', class: 'bg-green-100 text-green-800' },
+      2: { label: 'Rejected', class: 'bg-red-100 text-red-800' },
+      3: { label: 'Expired', class: 'bg-gray-100 text-gray-800' },
+    };
+    const badge = badges[status as keyof typeof badges];
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.class}`}>
+        {badge.label}
+      </span>
+    );
   };
 
   if (loading) {
@@ -276,6 +309,157 @@ export default function ClientDetailPage() {
                 </div>
               )}
             </dl>
+          </div>
+        </Card>
+
+        {/* Submissions Section */}
+        <Card>
+          <div className="px-4 py-5 sm:p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-lg font-medium text-gray-900">Submissions</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  All submissions created for this client
+                </p>
+              </div>
+              <Button onClick={handleCreateSubmission} variant="primary">
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                New Submission
+              </Button>
+            </div>
+
+            {loadingSubmissions ? (
+              <div className="flex justify-center py-8">
+                <LoadingSpinner size="medium" />
+              </div>
+            ) : submissions.length === 0 ? (
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No submissions</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Get started by creating a new submission for this client.
+                </p>
+                <div className="mt-6">
+                  <Button onClick={handleCreateSubmission} variant="primary">
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    New Submission
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Status
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Message
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Files
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Created
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Expires
+                      </th>
+                      <th scope="col" className="relative px-6 py-3">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {submissions.map((submission) => (
+                      <tr
+                        key={submission.id}
+                        className="hover:bg-gray-50"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(submission.status)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 max-w-xs truncate">
+                            {submission.message || 'No message'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {submission.mediaFiles.length} file{submission.mediaFiles.length !== 1 ? 's' : ''}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(submission.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(submission.expiresAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <Button
+                            onClick={() => navigate(`/submissions/${submission.id}`)}
+                            variant="ghost"
+                            size="small"
+                          >
+                            View
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </Card>
 

@@ -48,4 +48,9 @@ export const submissionService = {
   async deleteSubmission(id: string): Promise<void> {
     await api.delete(`/submission/${id}`);
   },
+
+  async getSubmissionsByClient(clientId: string): Promise<SubmissionResponse[]> {
+    const response = await api.get<SubmissionResponse[]>(`/client/${clientId}/submissions`);
+    return response.data;
+  },
 };

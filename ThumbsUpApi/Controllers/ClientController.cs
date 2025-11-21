@@ -4,6 +4,7 @@ using System.Security.Claims;
 using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
+using ThumbsUpApi.Mappers;
 
 namespace ThumbsUpApi.Controllers;
 
@@ -13,10 +14,17 @@ namespace ThumbsUpApi.Controllers;
 public class ClientController : ControllerBase
 {
     private readonly IClientRepository _clientRepository;
+    private readonly ISubmissionRepository _submissionRepository;
+    private readonly SubmissionMapper _submissionMapper;
 
-    public ClientController(IClientRepository clientRepository)
+    public ClientController(
+        IClientRepository clientRepository,
+        ISubmissionRepository submissionRepository,
+        SubmissionMapper submissionMapper)
     {
         _clientRepository = clientRepository;
+        _submissionRepository = submissionRepository;
+        _submissionMapper = submissionMapper;
     }
 
     private string GetUserId()
@@ -146,6 +154,22 @@ public class ClientController : ControllerBase
             LastUsedAt = client.LastUsedAt,
             SubmissionCount = submissionCount
         });
+    }
+
+    [HttpGet("{id}/submissions")]
+    public async Task<ActionResult<IEnumerable<SubmissionResponse>>> GetClientSubmissions(Guid id)
+    {
+        var userId = GetUserId();
+        var client = await _clientRepository.GetByIdAsync(id, userId);
+        
+        if (client == null)
+        {
+            return NotFound(new { message = "Client not found" });
+        }
+        
+        var submissions = await _submissionRepository.GetByClientIdAsync(id, userId);
+        
+        return Ok(submissions.Select(s => _submissionMapper.ToResponse(s)));
     }
 
     [HttpDelete("{id}")]

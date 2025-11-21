@@ -57,6 +57,27 @@ public class SubmissionRepository : ISubmissionRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<Submission>> GetByClientIdAsync(Guid clientId, string userId)
+    {
+        // First get the client to find their email
+        var client = await _context.Clients.FindAsync(clientId);
+        if (client == null)
+        {
+            return Enumerable.Empty<Submission>();
+        }
+
+        // Match submissions by ClientId OR by ClientEmail (for submissions created before client entity)
+        return await _context.Submissions
+            .Include(s => s.MediaFiles)
+            .Include(s => s.Review)
+            .Include(s => s.CreatedBy)
+            .Include(s => s.Client)
+            .Where(s => s.CreatedById == userId && 
+                       (s.ClientId == clientId || s.ClientEmail == client.Email))
+            .OrderByDescending(s => s.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<Submission> CreateAsync(Submission submission)
     {
         _context.Submissions.Add(submission);

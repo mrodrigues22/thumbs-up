@@ -9,6 +9,7 @@ public interface ISubmissionRepository
     Task<Submission?> GetByTokenAsync(string token);
     Task<Submission?> GetByTokenWithIncludesAsync(string token);
     Task<IEnumerable<Submission>> GetAllByUserIdAsync(string userId);
+    Task<IEnumerable<Submission>> GetByClientIdAsync(Guid clientId, string userId);
     Task<Submission> CreateAsync(Submission submission);
     Task UpdateAsync(Submission submission);
     Task DeleteAsync(Submission submission);
