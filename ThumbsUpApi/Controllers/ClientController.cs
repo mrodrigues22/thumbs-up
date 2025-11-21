@@ -209,6 +209,12 @@ public class ClientController : ControllerBase
         {
             return NotFound(new { message = "Client not found" });
         }
+        
+        // Verify ownership (defense in depth)
+        if (client.CreatedById != userId)
+        {
+            return NotFound(new { message = "Client not found" });
+        }
 
         try
         {
@@ -251,6 +257,12 @@ public class ClientController : ControllerBase
         var client = await _clientRepository.GetByIdAsync(id, userId);
         
         if (client == null)
+        {
+            return NotFound(new { message = "Client not found" });
+        }
+        
+        // Verify ownership (defense in depth)
+        if (client.CreatedById != userId)
         {
             return NotFound(new { message = "Client not found" });
         }

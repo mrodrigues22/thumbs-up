@@ -86,6 +86,13 @@ public class SubmissionController : ControllerBase
             {
                 return BadRequest(new { message = "Client not found" });
             }
+            
+            // Verify ownership (defense in depth)
+            if (client.CreatedById != userId)
+            {
+                return BadRequest(new { message = "Client not found" });
+            }
+            
             clientEmail = client.Email;
             
             // Update LastUsedAt
