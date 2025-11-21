@@ -219,101 +219,8 @@ export default function ClientDetailPage() {
           </div>
         )}
 
-        {/* Client Details */}
-        <Card className="mb-6">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-lg font-medium text-gray-900">Client Information</h2>
-              <div className="flex gap-2">
-                <Button onClick={handleOpenEditModal} variant="ghost" size="small">
-                  <svg
-                    className="w-4 h-4 mr-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                  Edit
-                </Button>
-                <Button
-                  onClick={handleDelete}
-                  variant="ghost"
-                  size="small"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <svg
-                    className="w-4 h-4 mr-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                  Delete
-                </Button>
-              </div>
-            </div>
-
-            <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-              {client.name && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Name</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{client.name}</dd>
-                </div>
-              )}
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Email</dt>
-                <dd className="mt-1 text-sm text-gray-900">{client.email}</dd>
-              </div>
-              {client.companyName && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Company</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{client.companyName}</dd>
-                </div>
-              )}
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Submissions</dt>
-                <dd className="mt-1 text-sm text-gray-900">{client.submissionCount}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Created</dt>
-                <dd className="mt-1 text-sm text-gray-900">
-                  {new Date(client.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </dd>
-              </div>
-              {client.lastUsedAt && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Last Used</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {new Date(client.lastUsedAt).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </div>
-        </Card>
-
         {/* Submissions Section */}
-        <Card>
+        <Card className="mb-6">
           <div className="px-4 py-5 sm:p-6">
             <div className="flex justify-between items-center mb-6">
               <div>
@@ -460,6 +367,99 @@ export default function ClientDetailPage() {
                 </table>
               </div>
             )}
+          </div>
+        </Card>
+
+        {/* Client Details */}
+        <Card>
+          <div className="px-4 py-5 sm:p-6">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-lg font-medium text-gray-900">Client Information</h2>
+              <div className="flex gap-2">
+                <Button onClick={handleOpenEditModal} variant="ghost" size="small">
+                  <svg
+                    className="w-4 h-4 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                  Edit
+                </Button>
+                <Button
+                  onClick={handleDelete}
+                  variant="ghost"
+                  size="small"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <svg
+                    className="w-4 h-4 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                  Delete
+                </Button>
+              </div>
+            </div>
+
+            <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+              {client.name && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Name</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{client.name}</dd>
+                </div>
+              )}
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Email</dt>
+                <dd className="mt-1 text-sm text-gray-900">{client.email}</dd>
+              </div>
+              {client.companyName && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Company</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{client.companyName}</dd>
+                </div>
+              )}
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Submissions</dt>
+                <dd className="mt-1 text-sm text-gray-900">{client.submissionCount}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Created</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {new Date(client.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </dd>
+              </div>
+              {client.lastUsedAt && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Last Used</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {new Date(client.lastUsedAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </dd>
+                </div>
+              )}
+            </dl>
           </div>
         </Card>
 
