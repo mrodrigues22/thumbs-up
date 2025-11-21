@@ -11,6 +11,8 @@ public class CreateSubmissionRequest
     
     public string? Message { get; set; }
     
+    public string? Captions { get; set; }
+    
     [Required]
     public List<IFormFile> Files { get; set; } = new();
 }
@@ -22,6 +24,7 @@ public class SubmissionResponse
     public string AccessToken { get; set; } = string.Empty;
     public string? AccessPassword { get; set; }
     public string? Message { get; set; }
+    public string? Captions { get; set; }
     public SubmissionStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime ExpiresAt { get; set; }

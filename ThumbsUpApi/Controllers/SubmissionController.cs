@@ -77,6 +77,7 @@ public class SubmissionController : ControllerBase
             AccessToken = GenerateAccessToken(),
             AccessPasswordHash = BCrypt.Net.BCrypt.HashPassword(accessPassword),
             Message = request.Message,
+            Captions = request.Captions,
             Status = SubmissionStatus.Pending,
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(_configuration.GetValue<int>("Submission:LinkExpirationDays", 7))

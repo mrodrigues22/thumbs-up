@@ -12,6 +12,7 @@ export default function CreateSubmissionPage() {
   const [formData, setFormData] = useState({
     clientEmail: '',
     message: '',
+    captions: '',
   });
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState('');
@@ -192,7 +193,7 @@ export default function CreateSubmissionPage() {
                     fullWidth
                     onClick={() => {
                       setSuccess(false);
-                      setFormData({ clientEmail: '', message: '' });
+                      setFormData({ clientEmail: '', message: '', captions: '' });
                       setFiles([]);
                       setReviewLink('');
                       setAccessPassword('');
@@ -242,13 +243,24 @@ export default function CreateSubmissionPage() {
 
               {/* Message */}
               <Textarea
-                label="Message (Optional)"
+                label="Message for the client (Optional)"
                 name="message"
                 value={formData.message}
                 onChange={(value) => setFormData({ ...formData, message: value })}
                 rows={4}
                 placeholder="Add a message for your client..."
                 helperText="Include any context or instructions for your client"
+              />
+
+              {/* Captions */}
+              <Textarea
+                label="Captions (Optional)"
+                name="captions"
+                value={formData.captions}
+                onChange={(value) => setFormData({ ...formData, captions: value })}
+                rows={4}
+                placeholder="Add captions for your files..."
+                helperText="Optional captions for the media files"
               />
 
               {/* File Upload */}

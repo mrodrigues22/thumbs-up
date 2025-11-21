@@ -21,6 +21,8 @@ public class Submission
     
     public string? Message { get; set; }
     
+    public string? Captions { get; set; }
+    
     public SubmissionStatus Status { get; set; } = SubmissionStatus.Pending;
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
