@@ -59,7 +59,7 @@ export default function LandingPage() {
         <div className="flex gap-4 justify-center">
           <Link to="/register">
             <Button variant="primary" size="large">
-              Start Free Trial
+              Get Started
             </Button>
           </Link>
           <a href="#pricing">
