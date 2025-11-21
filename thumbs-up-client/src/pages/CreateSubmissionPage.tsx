@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Layout } from '../components/layout';
 import { Card, Button, Input, Textarea, ErrorMessage, ClientSelector } from '../components/common';
 import { useCreateSubmission } from '../hooks/submissions';
-import { useClients } from '../hooks/clients/useClients';
+import { useClients, clientKeys } from '../hooks/clients/useClients';
 import { submissionService } from '../services/submissionService';
 import { toast } from 'react-toastify';
 
@@ -11,6 +12,7 @@ type ClientMode = 'existing' | 'new' | 'quick';
 
 export default function CreateSubmissionPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   useCreateSubmission();
   const { data: clients = [], isLoading: clientsLoading } = useClients();
   
@@ -116,6 +118,11 @@ export default function CreateSubmissionPage() {
       }
 
       const response = await submissionService.createSubmission(submissionData);
+      
+      // If we created a new client, invalidate the clients cache
+      if (clientMode === 'new' && formData.clientName) {
+        queryClient.invalidateQueries({ queryKey: clientKeys.list() });
+      }
       
       setSuccess(true);
       setReviewLink(`${window.location.origin}/review/${response.accessToken}`);
