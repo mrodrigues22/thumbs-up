@@ -9,6 +9,7 @@ import { Layout } from '../components/layout';
 import { Card, Button, LoadingSpinner, ErrorMessage } from '../components/common';
 import { SubmissionStatusBadge } from '../components/submissions';
 import { useSubmissionDetail, useDeleteSubmission } from '../hooks/submissions';
+import { useApprovalPrediction } from '../hooks/insights';
 import { MediaFileType } from '../shared/types';
 import { toast } from 'react-toastify';
 import { useAuthStore } from '../stores/authStore';
@@ -24,6 +25,47 @@ export default function SubmissionDetailPage() {
   });
 
   const { deleteSubmission, isLoading: isDeleting } = useDeleteSubmission();
+
+  const { prediction, isLoading: isLoadingPrediction, isError: isPredictionError } =
+    useApprovalPrediction({
+      clientId: submission?.clientId,
+      submissionId: submission?.id,
+      enabled: !!submission?.clientId,
+    });
+
+  // Format rationale with **bold** markers and line breaks.
+  const renderFormattedRationale = (text: string) => {
+    if (!text) return null;
+    const segments = text.split('**');
+    return segments.map((seg, i) => {
+      const withLineBreaks = seg.split(/\n+/).map((line, li, arr) => (
+        <span key={`${i}-${li}`}>
+          {line}
+          {li < arr.length - 1 && <br />}
+        </span>
+      ));
+      if (i % 2 === 1) {
+        return (
+          <strong key={i} className="font-semibold">
+            {withLineBreaks}
+          </strong>
+        );
+      }
+      return <span key={i}>{withLineBreaks}</span>;
+    });
+  };
+
+  const probabilityPercent = prediction ? prediction.probability * 100 : null;
+  const probabilityColorClasses = (() => {
+    if (probabilityPercent == null) return 'bg-gray-200 text-gray-700 dark:bg-gray-700/40 dark:text-gray-300';
+    if (probabilityPercent >= 80) return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
+    if (probabilityPercent >= 50) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300';
+    return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+  })();
+
+  const probabilityBarStyle = probabilityPercent != null
+    ? { width: `${probabilityPercent}%` }
+    : { width: '0%' };
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this submission?')) {
@@ -104,33 +146,67 @@ export default function SubmissionDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Review - Show first if it exists */}
-            {submission.review && (
-              <Card title="Client Review">
-                <dl className="grid grid-cols-1 gap-4">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Status</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {submission.review.status === 0 ? 'Approved' : 'Rejected'}
-                    </dd>
-                  </div>
-                  {submission.review.comment && (
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Comment</dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        {submission.review.comment}
-                      </dd>
-                    </div>
-                  )}
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Reviewed At</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {new Date(submission.review.reviewedAt).toLocaleString()}
-                    </dd>
-                  </div>
-                </dl>
+
+            {/* AI Approval Insight */}
+            {isLoadingPrediction && !prediction && (
+              <Card title="AI Approval Insight">
+                <div className="animate-pulse space-y-3">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48" />
+                  <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-32" />
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full" />
+                </div>
               </Card>
             )}
+            {prediction && (
+              <Card title="AI Approval Insight">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <p className="text-sm text-gray-500 dark:text-gray-300">
+                        Estimated likelihood of client approval
+                      </p>
+                      <div className="relative group cursor-help">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M12 6a6 6 0 00-6 6c0 1.657 1.343 3 3 3h3" />
+                        </svg>
+                        <div className="absolute left-1/2 top-full mt-2 -translate-x-1/2 w-64 bg-gray-800 text-white text-xs p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                          This AI estimate analyzes historical approval patterns, media attributes, and textual cues. Use as guidance—not a final decision.
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 ${probabilityColorClasses}`}>
+                      <span className="text-2xl font-bold">
+                        {probabilityPercent?.toFixed(0)}%
+                      </span>
+                      <span className="text-xs uppercase tracking-wide">
+                        likelihood of approval
+                      </span>
+                    </div>
+                    <div className="mt-3 w-full h-2 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 transition-all"
+                        style={probabilityBarStyle}
+                      />
+                    </div>
+                  </div>
+                  {isLoadingPrediction && (
+                    <span className="text-xs text-gray-400">Updating...</span>
+                  )}
+                  {isPredictionError && !isLoadingPrediction && (
+                    <span className="text-xs text-red-500">(unavailable)</span>
+                  )}
+                </div>
+                {prediction.rationale && (
+                  <p className="mt-4 text-sm text-gray-700 dark:text-gray-200 leading-relaxed">
+                    {renderFormattedRationale(prediction.rationale)}
+                  </p>
+                )}
+              </Card>
+            )}
+
+
+            
+            
 
             {/* Submission Info */}
             <Card title="Submission Information">
@@ -157,6 +233,7 @@ export default function SubmissionDetailPage() {
                     {new Date(submission.expiresAt).toLocaleString()}
                   </dd>
                 </div>
+                
               </dl>
             </Card>
 
@@ -277,6 +354,34 @@ export default function SubmissionDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Review - Show first if it exists */}
+            {submission.review && (
+              <Card title="Client Review">
+                <dl className="grid grid-cols-1 gap-4">
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Status</dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {submission.review.status === 0 ? 'Approved' : 'Rejected'}
+                    </dd>
+                  </div>
+                  {submission.review.comment && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Comment</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        {submission.review.comment}
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Reviewed At</dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {new Date(submission.review.reviewedAt).toLocaleString()}
+                    </dd>
+                  </div>
+                </dl>
+              </Card>
+            )}
+
             {/* Media Files Carousel */}
             <Card title={`Content (${submission.mediaFiles.length})`}>
               {submission.mediaFiles.length === 0 ? (
