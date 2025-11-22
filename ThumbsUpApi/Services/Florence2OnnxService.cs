@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 
 namespace ThumbsUpApi.Services;
 
@@ -7,8 +8,6 @@ public class Florence2OnnxService : IImageOcrService
     private readonly IConfiguration _configuration;
     private readonly ILogger<Florence2OnnxService> _logger;
 
-    // In dev we assume an ONNX runtime server or container exposes an HTTP endpoint for OCR.
-    // Fallback: return null (no text) to keep pipeline resilient.
     public Florence2OnnxService(IConfiguration configuration, ILogger<Florence2OnnxService> logger)
     {
         _configuration = configuration;
@@ -17,36 +16,75 @@ public class Florence2OnnxService : IImageOcrService
 
     public async Task<string?> ExtractTextAsync(string physicalPath, CancellationToken ct = default)
     {
-        var endpoint = _configuration["Ai:Florence2:OcrEndpoint"]; // e.g. http://localhost:8081/ocr
-        if (string.IsNullOrWhiteSpace(endpoint))
+        var baseUrl = _configuration["Ai:Ollama:BaseUrl"] ?? "http://localhost:11434";
+        var model = _configuration["Ai:Ollama:OcrModel"] ?? "llava";
+
+        if (string.IsNullOrWhiteSpace(baseUrl))
         {
-            _logger.LogWarning("Florence2 OCR endpoint not configured; returning null OCR text.");
+            _logger.LogWarning("Ollama base URL not configured; returning null OCR text.");
             return null;
         }
 
         try
         {
-            using var client = new HttpClient();
-            using var fs = File.OpenRead(physicalPath);
-            var form = new MultipartFormDataContent
+            var imageBytes = await File.ReadAllBytesAsync(physicalPath, ct);
+            var imageBase64 = Convert.ToBase64String(imageBytes);
+
+            using var client = new HttpClient
             {
-                { new StreamContent(fs), "file", Path.GetFileName(physicalPath) }
+                BaseAddress = new Uri(baseUrl)
             };
-            var response = await client.PostAsync(endpoint, form, ct);
+
+            var request = new OllamaGenerateRequest
+            {
+                Model = model,
+                Prompt = "You are an OCR engine. Read ALL visible text in this image and return only the text, line by line, in natural reading order, with no extra commentary.",
+                Images = new[] { imageBase64 },
+                Stream = false
+            };
+
+            using var response = await client.PostAsJsonAsync("/api/generate", request, ct);
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Florence2 OCR request failed {StatusCode}", response.StatusCode);
+                _logger.LogWarning("LLaVA OCR request failed {StatusCode}", response.StatusCode);
                 return null;
             }
-            var payload = await response.Content.ReadFromJsonAsync<FlorenceOcrResponse>(cancellationToken: ct);
-            return payload?.Text;
+
+            var payload = await response.Content.ReadFromJsonAsync<OllamaGenerateResponse>(cancellationToken: ct);
+            var text = payload?.Response;
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return null;
+            }
+
+            return text.Trim();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Florence2 OCR exception for {Path}", physicalPath);
+            _logger.LogError(ex, "LLaVA/Ollama OCR exception for {Path}", physicalPath);
             return null;
         }
     }
 
-    private record FlorenceOcrResponse(string? Text);
+    private sealed class OllamaGenerateRequest
+    {
+        [JsonPropertyName("model")]
+        public string Model { get; set; } = string.Empty;
+
+        [JsonPropertyName("prompt")]
+        public string Prompt { get; set; } = string.Empty;
+
+        [JsonPropertyName("images")]
+        public string[] Images { get; set; } = Array.Empty<string>();
+
+        [JsonPropertyName("stream")]
+        public bool Stream { get; set; }
+        }
+
+    private sealed class OllamaGenerateResponse
+    {
+        [JsonPropertyName("response")]
+        public string? Response { get; set; }
+    }
 }
