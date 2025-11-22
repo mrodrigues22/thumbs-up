@@ -72,7 +72,7 @@ builder.Services.AddScoped<ThumbsUpApi.Mappers.ReviewMapper>();
 
 // Add Services
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
-builder.Services.AddScoped<IEmailService, MockEmailService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IImageCompressionService, ImageCompressionService>();
 // AI services (swappable via configuration)
 builder.Services.AddScoped<ThumbsUpApi.Services.IImageOcrService, ThumbsUpApi.Services.Florence2OnnxService>();
