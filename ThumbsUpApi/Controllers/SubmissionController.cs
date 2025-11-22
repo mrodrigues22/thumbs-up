@@ -21,6 +21,7 @@ public class SubmissionController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly ILogger<SubmissionController> _logger;
     private readonly SubmissionMapper _mapper;
+    private readonly ThumbsUpApi.Services.ISubmissionAnalysisQueue _analysisQueue;
     
     public SubmissionController(
         ISubmissionRepository submissionRepository,
@@ -29,7 +30,8 @@ public class SubmissionController : ControllerBase
         IEmailService emailService,
         IConfiguration configuration,
         ILogger<SubmissionController> logger,
-        SubmissionMapper mapper)
+        SubmissionMapper mapper,
+        ThumbsUpApi.Services.ISubmissionAnalysisQueue analysisQueue)
     {
         _submissionRepository = submissionRepository;
         _clientRepository = clientRepository;
@@ -38,6 +40,7 @@ public class SubmissionController : ControllerBase
         _configuration = configuration;
         _logger = logger;
         _mapper = mapper;
+        _analysisQueue = analysisQueue;
     }
     
     [HttpPost]
@@ -183,6 +186,8 @@ public class SubmissionController : ControllerBase
         submission.MediaFiles = mediaFiles;
         
         await _submissionRepository.CreateAsync(submission);
+        // Enqueue AI analysis (images) in background
+        _analysisQueue.Enqueue(submission.Id);
         
         // Send email to client
         var reviewLink = $"{Request.Scheme}://{Request.Host}/review/{submission.AccessToken}";

@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using ThumbsUpApi.Data;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Services;
 
@@ -61,6 +63,8 @@ builder.Services.AddScoped<ThumbsUpApi.Repositories.ISubmissionRepository, Thumb
 builder.Services.AddScoped<ThumbsUpApi.Repositories.IReviewRepository, ThumbsUpApi.Repositories.ReviewRepository>();
 builder.Services.AddScoped<ThumbsUpApi.Repositories.IUserRepository, ThumbsUpApi.Repositories.UserRepository>();
 builder.Services.AddScoped<ThumbsUpApi.Repositories.IClientRepository, ThumbsUpApi.Repositories.ClientRepository>();
+builder.Services.AddScoped<ThumbsUpApi.Repositories.IContentFeatureRepository, ThumbsUpApi.Repositories.ContentFeatureRepository>();
+builder.Services.AddScoped<ThumbsUpApi.Repositories.IClientSummaryRepository, ThumbsUpApi.Repositories.ClientSummaryRepository>();
 
 // Add Mappers
 builder.Services.AddScoped<ThumbsUpApi.Mappers.SubmissionMapper>();
@@ -70,6 +74,32 @@ builder.Services.AddScoped<ThumbsUpApi.Mappers.ReviewMapper>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IEmailService, MockEmailService>();
 builder.Services.AddScoped<IImageCompressionService, ImageCompressionService>();
+// AI services (swappable via configuration)
+builder.Services.AddScoped<ThumbsUpApi.Services.IImageOcrService, ThumbsUpApi.Services.Florence2OnnxService>();
+builder.Services.AddScoped<ThumbsUpApi.Services.IImageThemeService, ThumbsUpApi.Services.MoondreamThemeService>();
+builder.Services.AddScoped<ThumbsUpApi.Services.ITextGenerationService, ThumbsUpApi.Services.LlamaTextService>();
+builder.Services.AddScoped<ThumbsUpApi.Services.IApprovalPredictor, ThumbsUpApi.Services.HybridApprovalPredictor>();
+builder.Services.AddScoped<ThumbsUpApi.Services.ImageAnalysisService>();
+builder.Services.AddScoped<ThumbsUpApi.Services.ReviewPredictorService>();
+builder.Services.AddSingleton<ThumbsUpApi.Services.ISubmissionAnalysisQueue, ThumbsUpApi.Services.SubmissionAnalysisQueue>();
+builder.Services.AddHostedService<ThumbsUpApi.Services.AiProcessingWorker>();
+
+// Rate Limiting for AI endpoints
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("ai", httpContext =>
+        RateLimitPartition.GetTokenBucketLimiter(
+            partitionKey: httpContext.User?.Identity?.Name ?? "anon",
+            factory: key => new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = 20,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 10,
+                ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                TokensPerPeriod = 20,
+                AutoReplenishment = true
+            }));
+});
 
 // Add Controllers
 builder.Services.AddControllers();
@@ -155,6 +185,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
+app.UseRateLimiter();
 
 // Serve static files from wwwroot
 app.UseStaticFiles();

@@ -185,6 +185,26 @@ export interface UpdateSubmissionRequest {
   status?: SubmissionStatus;
 }
 
+// ===== AI Insights Types =====
+
+export interface ClientSummaryResponse {
+  clientId: string;
+  summary: string;
+  generatedAt: string;
+}
+
+export interface ApprovalPredictionRequest {
+  clientId: string;
+  submissionId: string;
+}
+
+export interface ApprovalPredictionResponse {
+  clientId: string;
+  submissionId: string;
+  probability: number;
+  rationale: string;
+}
+
 // ===== Filter Types =====
 export interface SubmissionFilters {
   status?: SubmissionStatus;

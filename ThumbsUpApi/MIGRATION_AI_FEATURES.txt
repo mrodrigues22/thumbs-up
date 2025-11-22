@@ -1,0 +1,13 @@
+Run the following after completing AI feature scaffolding:
+
+# Add migration for new tables (ContentFeatures, ClientSummaries) and modified Submission
+# Ensure dotnet-ef tools installed: dotnet tool install --global dotnet-ef
+
+dotnet ef migrations add AddAiFeatures --project ThumbsUpApi --startup-project ThumbsUpApi
+
+dotnet ef database update --project ThumbsUpApi --startup-project ThumbsUpApi
+
+If you need to regenerate:
+- Delete the generated migration files, then re-run commands.
+
+Note: Relationship added: Submission <-> ContentFeature (1:1) and Client <-> ClientSummary (1:1).

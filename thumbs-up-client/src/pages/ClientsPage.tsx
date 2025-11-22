@@ -6,15 +6,20 @@
 import { useEffect, useState } from 'react';
 import { Layout } from '../components/layout';
 import { clientService } from '../services/clientService';
-import { Button, Card, ErrorMessage, Modal, Input } from '../components/common';
+import { aiService } from '../services/aiService';
+import { Button, Card, ErrorMessage, Modal, Input, LoadingSpinner } from '../components/common';
 import { ClientsList } from '../components/clients';
-import type { Client, UpdateClientRequest } from '../shared/types';
+import type { Client, UpdateClientRequest, ClientSummaryResponse } from '../shared/types';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [aiSummary, setAiSummary] = useState<ClientSummaryResponse | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState({
@@ -42,6 +47,21 @@ export default function ClientsPage() {
     }
   };
 
+  const loadClientSummary = async (client: Client) => {
+    try {
+      setAiLoading(true);
+      setAiError(null);
+      const summary = await aiService.getClientSummary(client.id);
+      setAiSummary(summary);
+    } catch (err) {
+      console.error('Error loading AI summary:', err);
+      setAiError('Failed to load AI summary.');
+      setAiSummary(null);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleOpenModal = (client?: Client) => {
     if (client) {
       setEditingClient(client);
@@ -59,6 +79,15 @@ export default function ClientsPage() {
       });
     }
     setIsModalOpen(true);
+  };
+
+  const handleSelectClient = (client: Client | null) => {
+    setSelectedClient(client);
+    setAiSummary(null);
+    setAiError(null);
+    if (client) {
+      void loadClientSummary(client);
+    }
   };
 
   const handleCloseModal = () => {
@@ -172,13 +201,60 @@ export default function ClientsPage() {
           </div>
         </Card>
 
-        {/* Clients List */}
-        <ClientsList
-          clients={sortedClients}
-          loading={loading}
-          searchTerm={searchTerm}
-          onAddClient={() => handleOpenModal()}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2">
+            <ClientsList
+              clients={sortedClients}
+              loading={loading}
+              searchTerm={searchTerm}
+              onAddClient={() => handleOpenModal()}
+              onSelectClient={handleSelectClient}
+            />
+          </div>
+
+          <div className="lg:col-span-1">
+            <Card className="h-full">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">AI Client Summary</h2>
+              <p className="text-xs text-gray-500 mb-3">
+                Uses your past approvals/rejections and content to describe this client&apos;s preferences.
+              </p>
+
+              {!selectedClient && (
+                <p className="text-sm text-gray-500">
+                  Select a client from the list to see their AI summary.
+                </p>
+              )}
+
+              {selectedClient && (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-gray-900">
+                    {selectedClient.name || selectedClient.email}
+                  </p>
+
+                  {aiLoading && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <LoadingSpinner size="small" />
+                      <span>Analyzing client history...</span>
+                    </div>
+                  )}
+
+                  {aiError && !aiLoading && (
+                    <ErrorMessage error={aiError} />
+                  )}
+
+                  {aiSummary && !aiLoading && !aiError && (
+                    <div className="text-sm text-gray-800 whitespace-pre-line border-t pt-3 mt-2">
+                      {aiSummary.summary}
+                      <p className="mt-2 text-xs text-gray-400">
+                        Updated {new Date(aiSummary.generatedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
 
         {/* Create/Edit Modal */}
         <Modal
