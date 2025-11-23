@@ -182,8 +182,20 @@ export default function SubmissionDetailPage() {
       classes: 'border border-red-200 bg-red-50 text-red-700',
     },
   };
+  const normalizeFeatureStatus = (status: ContentFeatureStatus | number | null | undefined): ContentFeatureStatus | null => {
+    if (status == null) return null;
+    if (typeof status === 'string') return status as ContentFeatureStatus;
+    const numericMap: Record<number, ContentFeatureStatus> = {
+      0: ContentFeatureStatus.Pending,
+      1: ContentFeatureStatus.Completed,
+      2: ContentFeatureStatus.NoSignals,
+      3: ContentFeatureStatus.NoImages,
+      4: ContentFeatureStatus.Failed,
+    };
+    return numericMap[status] ?? null;
+  };
   const feature = submission.contentFeature;
-  const featureStatus = feature?.analysisStatus;
+  const featureStatus = normalizeFeatureStatus(feature?.analysisStatus);
   const featureStatusDisplay = featureStatus ? contentFeatureStatusMeta[featureStatus] : null;
   const analyzedTimestamp = feature?.lastAnalyzedAt ?? feature?.extractedAt;
   const canRenderInsights = !!feature && (featureStatus === ContentFeatureStatus.Completed || featureStatus === ContentFeatureStatus.NoSignals);

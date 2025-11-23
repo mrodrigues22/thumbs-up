@@ -259,7 +259,8 @@ export interface ContentFeatureResponse {
   themeInsights?: ThemeInsightsResponse | null;
   extractedAt?: string | null;
   lastAnalyzedAt?: string | null;
-  analysisStatus?: ContentFeatureStatus | null;
+  // Backend may still return legacy numeric enum codes; accept number for compatibility
+  analysisStatus?: ContentFeatureStatus | number | null;
   failureReason?: string | null;
 }
 
