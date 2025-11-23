@@ -41,7 +41,8 @@ public class OpenAiTextService : ITextGenerationService
                         Role = "user",
                         Content = new[] { new OpenAiResponseContent { Type = "input_text", Text = userPrompt } }
                     }
-                }
+                },
+                // Removed Text formatting specification; default plain text output is sufficient and avoids invalid 'text.format' payload errors
             };
 
             var payload = await _client.PostResponsesAsync<OpenAiResponseRequest, OpenAiResponsePayload>(request, ct);

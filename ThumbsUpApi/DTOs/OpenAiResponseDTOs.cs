@@ -10,9 +10,18 @@ public sealed class OpenAiResponseRequest
     [JsonPropertyName("input")]
     public OpenAiResponseMessage[] Input { get; set; } = Array.Empty<OpenAiResponseMessage>();
     
-    [JsonPropertyName("response_format")]
-    public object? ResponseFormat { get; set; }
+    // Updated per OpenAI Responses API: response_format moved to text.format
+    [JsonPropertyName("text")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public OpenAiTextOptions? Text { get; set; }
 } 
+
+public sealed class OpenAiTextOptions
+{
+    // e.g. "json" | "plain" | "markdown" depending on desired output
+    [JsonPropertyName("format")]
+    public string? Format { get; set; }
+}
 
 public sealed class OpenAiResponseMessage
 {
@@ -29,16 +38,14 @@ public sealed class OpenAiResponseContent
     public string Type { get; set; } = string.Empty;
     
     [JsonPropertyName("text")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Text { get; set; }
-    
-    [JsonPropertyName("image_file")]
-    public OpenAiResponseImageFile? ImageFile { get; set; }
-}
 
-public sealed class OpenAiResponseImageFile
-{
-    [JsonPropertyName("file_id")]
-    public string FileId { get; set; } = string.Empty;
+    // Updated to match Responses API vision input: provide a direct file id
+    // Example payload part: { "type": "input_image", "image_file_id": "file-abc123" }
+    [JsonPropertyName("image_file_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ImageFileId { get; set; }
 }
 
 public sealed class OpenAiResponsePayload

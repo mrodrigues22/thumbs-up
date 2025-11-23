@@ -47,7 +47,7 @@ public class OpenAiOcrService : IImageOcrService
                         Content = new[]
                         {
                             new OpenAiResponseContent { Type = "input_text", Text = prompt },
-                            new OpenAiResponseContent { Type = "input_image", ImageFile = new OpenAiResponseImageFile { FileId = fileId! } }
+                            new OpenAiResponseContent { Type = "input_image", ImageFileId = fileId! }
                         }
                     }
                 }

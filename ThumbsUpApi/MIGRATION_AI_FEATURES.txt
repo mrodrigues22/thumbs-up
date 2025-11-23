@@ -11,3 +11,9 @@ If you need to regenerate:
 - Delete the generated migration files, then re-run commands.
 
 Note: Relationship added: Submission <-> ContentFeature (1:1) and Client <-> ClientSummary (1:1).
+
+OpenAI Responses API Update (Nov 2025):
+- Deprecated request field `response_format` replaced by nested `text.format`.
+- Code updated in `DTOs/OpenAiResponseDTOs.cs` and `Services/OpenAiTextService.cs`.
+- If you previously pinned an older SDK, ensure it supports the new structure or adjust manually.
+- Rebuild containers (`docker-compose up --build`) after pulling this change.
