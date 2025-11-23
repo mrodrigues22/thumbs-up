@@ -18,7 +18,7 @@ public class OpenAiTextService : ITextGenerationService
 
     public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, CancellationToken ct = default)
     {
-        var model = _options.TextModel ?? _options.VisionModel ?? "gpt-5-mini";
+        var model = _options.TextModel ?? _options.VisionModel ?? "gpt-4o-mini";
 
         try
         {

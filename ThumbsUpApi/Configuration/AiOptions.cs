@@ -10,8 +10,8 @@ public sealed class AiOptions
     public string? BaseUrl { get; set; }
     
     [Required(ErrorMessage = "Text model is required")]
-    public string TextModel { get; set; } = "gpt-5-mini";
+    public string TextModel { get; set; } = "gpt-4o-mini";
     
     [Required(ErrorMessage = "Vision model is required")]
-    public string VisionModel { get; set; } = "gpt-5-mini";
+    public string VisionModel { get; set; } = "gpt-4o-mini";
 }

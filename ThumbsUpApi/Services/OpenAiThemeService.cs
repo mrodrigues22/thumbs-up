@@ -18,7 +18,7 @@ public class OpenAiThemeService : IImageThemeService
 
     public async Task<IReadOnlyList<string>> ExtractThemesAsync(string physicalPath, CancellationToken ct = default)
     {
-        var model = _options.VisionModel ?? _options.TextModel ?? "gpt-5-mini";
+        var model = _options.VisionModel ?? _options.TextModel ?? "gpt-4o-mini";
 
         try
         {
