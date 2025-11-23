@@ -35,16 +35,6 @@ public class SubmissionRepository : ISubmissionRepository
             .FirstOrDefaultAsync(s => s.AccessToken == token);
     }
 
-    public async Task<Submission?> GetByTokenWithIncludesAsync(string token)
-    {
-        return await _context.Submissions
-            .Include(s => s.MediaFiles)
-            .Include(s => s.Review)
-            .Include(s => s.CreatedBy)
-            .Include(s => s.Client)
-            .FirstOrDefaultAsync(s => s.AccessToken == token);
-    }
-
     public async Task<IEnumerable<Submission>> GetAllByUserIdAsync(string userId)
     {
         return await _context.Submissions

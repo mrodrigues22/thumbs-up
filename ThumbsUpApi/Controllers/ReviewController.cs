@@ -73,8 +73,15 @@ public class ReviewController : ControllerBase
         if (string.IsNullOrEmpty(password))
             return BadRequest(new { message = "Password is required" });
         
-        var submission = await _submissionRepository.GetByTokenWithIncludesAsync(token);
+        // First get submission to find the user ID
+        var submissionBasic = await _submissionRepository.GetByTokenAsync(token);
+        if (submissionBasic == null)
+        {
+            return NotFound(new { message = "Submission not found" });
+        }
         
+        // Now get with includes using the user ID
+        var submission = await _submissionRepository.GetByIdWithIncludesAsync(submissionBasic.Id, submissionBasic.CreatedById);
         if (submission == null)
         {
             return NotFound(new { message = "Submission not found" });
@@ -103,8 +110,15 @@ public class ReviewController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
         
-        var submission = await _submissionRepository.GetByTokenWithIncludesAsync(request.AccessToken);
+        // First get submission to find the user ID
+        var submissionBasic = await _submissionRepository.GetByTokenAsync(request.AccessToken);
+        if (submissionBasic == null)
+        {
+            return NotFound(new { message = "Submission not found" });
+        }
         
+        // Now get with includes using the user ID
+        var submission = await _submissionRepository.GetByIdWithIncludesAsync(submissionBasic.Id, submissionBasic.CreatedById);
         if (submission == null)
         {
             return NotFound(new { message = "Submission not found" });
