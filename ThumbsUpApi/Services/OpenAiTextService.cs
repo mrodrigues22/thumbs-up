@@ -1,39 +1,26 @@
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 
 namespace ThumbsUpApi.Services;
 
 public class OpenAiTextService : ITextGenerationService
 {
-    private readonly IConfiguration _configuration;
+    private readonly AiOptions _options;
+    private readonly IOpenAiClient _client;
     private readonly ILogger<OpenAiTextService> _logger;
-    private readonly IHttpClientFactory _httpClientFactory;
 
-    public OpenAiTextService(IConfiguration configuration, ILogger<OpenAiTextService> logger, IHttpClientFactory httpClientFactory)
+    public OpenAiTextService(Microsoft.Extensions.Options.IOptions<AiOptions> options, IOpenAiClient client, ILogger<OpenAiTextService> logger)
     {
-        _configuration = configuration;
+        _options = options.Value;
+        _client = client;
         _logger = logger;
-        _httpClientFactory = httpClientFactory;
     }
 
     public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, CancellationToken ct = default)
     {
-        var apiKey = _configuration["Ai:OpenAi:ApiKey"] ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            _logger.LogWarning("OpenAI API key not configured.");
-            return string.Empty;
-        }
-
-        var model = _configuration["Ai:OpenAi:Model"] ?? "gpt-5-mini";
+        var model = _options.TextModel ?? _options.VisionModel ?? "gpt-5-mini";
 
         try
         {
-            var client = _httpClientFactory.CreateClient();
-            client.BaseAddress = new Uri("https://api.openai.com/v1/");
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
             var request = new ChatCompletionsRequest
             {
                 Model = model,
@@ -44,15 +31,13 @@ public class OpenAiTextService : ITextGenerationService
                 }
             };
 
-            using var response = await client.PostAsJsonAsync("chat/completions", request, ct);
-            if (!response.IsSuccessStatusCode)
+            var payload = await _client.PostAsync<ChatCompletionsRequest, ChatCompletionsResponse>("chat/completions", request, ct);
+            if (payload == null)
             {
-                _logger.LogWarning("OpenAI text generation failed {StatusCode}", response.StatusCode);
                 return string.Empty;
             }
 
-            var payload = await response.Content.ReadFromJsonAsync<ChatCompletionsResponse>(cancellationToken: ct);
-            var content = payload?.Choices?.FirstOrDefault()?.Message?.Content;
+            var content = payload.Choices?.FirstOrDefault()?.Message?.Content;
             return content?.Trim() ?? string.Empty;
         }
         catch (Exception ex)

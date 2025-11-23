@@ -55,8 +55,12 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// HttpClient factory for OpenAI services
+// HttpClient factory for outbound calls (OpenAI, email providers, etc.)
 builder.Services.AddHttpClient();
+
+// AI options and client
+builder.Services.Configure<ThumbsUpApi.Services.AiOptions>(builder.Configuration.GetSection("Ai:OpenAi"));
+builder.Services.AddScoped<ThumbsUpApi.Services.IOpenAiClient, ThumbsUpApi.Services.OpenAiClient>();
 
 // Add HttpContextAccessor for accessing request information
 builder.Services.AddHttpContextAccessor();
