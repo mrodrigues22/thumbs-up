@@ -95,8 +95,21 @@ public class HybridApprovalPredictor : IApprovalPredictor
             return $"Predicted approval {probability:P0}. Matches: {matchScore}. (No GPT model configured.)";
         }
 
-        var result = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
-        return string.IsNullOrWhiteSpace(result) ? $"Predicted approval {probability:P0}. Matches: {matchScore}." : result.Trim();
+        try
+        {
+            var result = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
+            return string.IsNullOrWhiteSpace(result) ? $"Predicted approval {probability:P0}. Matches: {matchScore}." : result.Trim();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("API key"))
+        {
+            // Propagate configuration errors to controller
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate AI rationale for submission {SubmissionId}", submission.Id);
+            return $"Predicted approval {probability:P0}. Matches: {matchScore}. (AI rationale unavailable)";
+        }
     }
 
     private List<string> ParseTags(string? json)

@@ -150,6 +150,11 @@ public class ReviewPredictorService : IReviewPredictorService
             var response = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
             return ParseJsonArrayResponse(response) ?? new List<string> { "Unable to determine style preferences" };
         }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("API key"))
+        {
+            // Propagate configuration errors
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating style preferences for {ClientId}", client.Id);
@@ -174,6 +179,11 @@ public class ReviewPredictorService : IReviewPredictorService
             var response = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
             return ParseJsonArrayResponse(response) ?? new List<string> { "Unable to determine recurring positives" };
         }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("API key"))
+        {
+            // Propagate configuration errors
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating recurring positives for {ClientId}", client.Id);
@@ -196,6 +206,11 @@ public class ReviewPredictorService : IReviewPredictorService
         {
             var response = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
             return ParseJsonArrayResponse(response) ?? new List<string> { "Unable to determine rejection reasons" };
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("API key"))
+        {
+            // Propagate configuration errors
+            throw;
         }
         catch (Exception ex)
         {
