@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ThumbsUpApi.Configuration;
 
 namespace ThumbsUpApi.Services;
 
@@ -27,34 +28,26 @@ public sealed class OpenAiClient : IOpenAiClient
         var apiKey = _options.ApiKey ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            _logger.LogWarning("OpenAI API key not configured.");
-            return default;
+            throw new InvalidOperationException("OpenAI API key is not configured.");
         }
 
         var baseUrl = _options.BaseUrl ?? "https://api.openai.com/v1/";
 
-        try
-        {
-            var client = _httpClientFactory.CreateClient();
-            client.BaseAddress = new Uri(baseUrl);
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        var client = _httpClientFactory.CreateClient("OpenAiClient");
+        client.BaseAddress = new Uri(baseUrl);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
-            using var response = await client.PostAsJsonAsync(path, request, cancellationToken: ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                var body = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogWarning("OpenAI request to {Path} failed with {StatusCode}: {Body}", path, response.StatusCode, Truncate(body));
-                return default;
-            }
-
-            var payload = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: ct);
-            return payload;
-        }
-        catch (Exception ex)
+        using var response = await client.PostAsJsonAsync(path, request, cancellationToken: ct);
+        
+        if (!response.IsSuccessStatusCode)
         {
-            _logger.LogError(ex, "OpenAI request to {Path} threw an exception", path);
-            return default;
+            var body = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("OpenAI request to {Path} failed with {StatusCode}: {Body}", path, response.StatusCode, Truncate(body));
+            throw new HttpRequestException($"OpenAI API request failed with status {response.StatusCode}: {Truncate(body, 200)}");
         }
+
+        var payload = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: ct);
+        return payload;
     }
 
     private static string Truncate(string value, int maxLength = 500)

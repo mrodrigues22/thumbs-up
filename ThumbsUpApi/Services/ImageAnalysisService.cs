@@ -1,14 +1,13 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
-using ThumbsUpApi.Data;
+using ThumbsUpApi.Interfaces;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
 
 namespace ThumbsUpApi.Services;
 
-public class ImageAnalysisService
+public class ImageAnalysisService : IImageAnalysisService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly ISubmissionRepository _submissionRepo;
     private readonly IFileStorageService _fileStorage;
     private readonly IImageOcrService _ocr;
     private readonly IImageThemeService _themes;
@@ -16,14 +15,14 @@ public class ImageAnalysisService
     private readonly ILogger<ImageAnalysisService> _logger;
 
     public ImageAnalysisService(
-        ApplicationDbContext db,
+        ISubmissionRepository submissionRepo,
         IFileStorageService fileStorage,
         IImageOcrService ocr,
         IImageThemeService themes,
         IContentFeatureRepository featureRepo,
         ILogger<ImageAnalysisService> logger)
     {
-        _db = db;
+        _submissionRepo = submissionRepo;
         _fileStorage = fileStorage;
         _ocr = ocr;
         _themes = themes;
@@ -37,9 +36,7 @@ public class ImageAnalysisService
     /// </summary>
     public async Task<ContentFeature?> AnalyzeSubmissionAsync(Guid submissionId, CancellationToken ct = default)
     {
-        var submission = await _db.Submissions
-            .Include(s => s.MediaFiles)
-            .FirstOrDefaultAsync(s => s.Id == submissionId, ct);
+        var submission = await _submissionRepo.GetByIdSystemAsync(submissionId);
         if (submission == null)
         {
             _logger.LogWarning("Submission {SubmissionId} not found for analysis", submissionId);

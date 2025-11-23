@@ -29,6 +29,13 @@ public class SubmissionRepository : ISubmissionRepository
             .FirstOrDefaultAsync(s => s.Id == id && s.CreatedById == userId);
     }
 
+    public async Task<Submission?> GetByIdSystemAsync(Guid id)
+    {
+        return await _context.Submissions
+            .Include(s => s.MediaFiles)
+            .FirstOrDefaultAsync(s => s.Id == id);
+    }
+
     public async Task<Submission?> GetByTokenAsync(string token)
     {
         return await _context.Submissions

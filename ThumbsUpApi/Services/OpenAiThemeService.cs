@@ -1,4 +1,5 @@
-using System.Text.Json.Serialization;
+using ThumbsUpApi.Configuration;
+using ThumbsUpApi.DTOs;
 
 namespace ThumbsUpApi.Services;
 
@@ -24,29 +25,31 @@ public class OpenAiThemeService : IImageThemeService
             var bytes = await File.ReadAllBytesAsync(physicalPath, ct);
             var base64 = Convert.ToBase64String(bytes);
             var prompt = "List 3-8 concise lowercase one-word or hyphenated style/theme keywords for this image. Return comma-separated list only.";
-            var request = new VisionRequest
+            
+            var request = new OpenAiChatRequest
             {
                 Model = model,
                 Messages = new[]
                 {
-                    new VisionMessage
+                    new OpenAiMessage
                     {
                         Role = "user",
-                        Content = new VisionContent[]
+                        Content = new OpenAiVisionContent[]
                         {
-                            new VisionContent { Type = "text", Text = prompt },
-                            new VisionContent { Type = "image_url", ImageUrl = new VisionImageUrl { Url = $"data:image/png;base64,{base64}" } }
+                            new() { Type = "text", Text = prompt },
+                            new() { Type = "image_url", ImageUrl = new OpenAiImageUrl { Url = $"data:image/png;base64,{base64}" } }
                         }
                     }
                 }
             };
 
-            var payload = await _client.PostAsync<VisionRequest, VisionResponse>("chat/completions", request, ct);
+            var payload = await _client.PostAsync<OpenAiChatRequest, OpenAiChatResponse>("chat/completions", request, ct);
             if (payload == null)
             {
                 return Array.Empty<string>();
             }
-            var text = payload?.Choices?.FirstOrDefault()?.Message?.ContentString() ?? string.Empty;
+            
+            var text = payload.Choices?.FirstOrDefault()?.Message?.GetContentString() ?? string.Empty;
             var tags = text.Split(new[] { ',', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(t => t.Trim().ToLowerInvariant())
                 .Where(t => t.Length > 0 && t.Length < 40)
@@ -59,35 +62,5 @@ public class OpenAiThemeService : IImageThemeService
             _logger.LogError(ex, "OpenAI theme extraction exception for {Path}", physicalPath);
             return Array.Empty<string>();
         }
-    }
-
-    private sealed class VisionRequest
-    {
-        [JsonPropertyName("model")] public string Model { get; set; } = string.Empty;
-        [JsonPropertyName("messages")] public VisionMessage[] Messages { get; set; } = Array.Empty<VisionMessage>();
-    }
-    private sealed class VisionMessage
-    {
-        [JsonPropertyName("role")] public string Role { get; set; } = string.Empty;
-        [JsonPropertyName("content")] public VisionContent[] Content { get; set; } = Array.Empty<VisionContent>();
-        public string ContentString() => string.Join("\n", Content.Where(c => c.Type == "text").Select(c => c.Text));
-    }
-    private sealed class VisionContent
-    {
-        [JsonPropertyName("type")] public string Type { get; set; } = string.Empty;
-        [JsonPropertyName("text")] public string? Text { get; set; }
-        [JsonPropertyName("image_url")] public VisionImageUrl? ImageUrl { get; set; }
-    }
-    private sealed class VisionImageUrl
-    {
-        [JsonPropertyName("url")] public string Url { get; set; } = string.Empty;
-    }
-    private sealed class VisionResponse
-    {
-        [JsonPropertyName("choices")] public VisionChoice[]? Choices { get; set; }
-    }
-    private sealed class VisionChoice
-    {
-        [JsonPropertyName("message")] public VisionMessage? Message { get; set; }
     }
 }

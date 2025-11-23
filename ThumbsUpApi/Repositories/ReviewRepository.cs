@@ -25,6 +25,18 @@ public class ReviewRepository : IReviewRepository
             .FirstOrDefaultAsync(r => r.SubmissionId == submissionId);
     }
 
+    public async Task<IEnumerable<Review>> GetByClientIdAsync(Guid clientId, CancellationToken ct = default)
+    {
+        var clientSubmissionIds = await _context.Submissions
+            .Where(s => s.ClientId == clientId)
+            .Select(s => s.Id)
+            .ToListAsync(ct);
+
+        return await _context.Reviews
+            .Where(r => clientSubmissionIds.Contains(r.SubmissionId))
+            .ToListAsync(ct);
+    }
+
     public async Task<Review> CreateAsync(Review review)
     {
         _context.Reviews.Add(review);

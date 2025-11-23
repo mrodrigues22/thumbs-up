@@ -14,6 +14,14 @@ public class ContentFeatureRepository : IContentFeatureRepository
         return await _db.ContentFeatures.AsNoTracking().FirstOrDefaultAsync(f => f.SubmissionId == submissionId);
     }
 
+    public async Task<IEnumerable<ContentFeature>> GetBySubmissionIdsAsync(IEnumerable<Guid> submissionIds, CancellationToken ct = default)
+    {
+        return await _db.ContentFeatures
+            .AsNoTracking()
+            .Where(f => submissionIds.Contains(f.SubmissionId))
+            .ToListAsync(ct);
+    }
+
     public async Task<ContentFeature> UpsertAsync(ContentFeature feature)
     {
         var existing = await _db.ContentFeatures.FirstOrDefaultAsync(f => f.SubmissionId == feature.SubmissionId);

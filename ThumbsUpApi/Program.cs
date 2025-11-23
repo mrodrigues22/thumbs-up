@@ -9,6 +9,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Services;
+using ThumbsUpApi.Configuration;
+using Polly;
+using Polly.Extensions.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,11 +58,35 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// HttpClient factory for outbound calls (OpenAI, email providers, etc.)
+// Configure Options with validation
+builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("Ai:OpenAi"));
+builder.Services.Configure<AiPredictorOptions>(builder.Configuration.GetSection("Ai:Predictor"));
+builder.Services.Configure<FileStorageOptions>(builder.Configuration.GetSection("FileStorage"));
+
+// Validate options on startup
+builder.Services.AddOptionsWithValidateOnStart<AiOptions>();
+builder.Services.AddOptionsWithValidateOnStart<AiPredictorOptions>();
+builder.Services.AddOptionsWithValidateOnStart<FileStorageOptions>();
+
+// HttpClient factory with Polly retry policies
 builder.Services.AddHttpClient();
 
-// AI options and client
-builder.Services.Configure<ThumbsUpApi.Services.AiOptions>(builder.Configuration.GetSection("Ai:OpenAi"));
+// Configure OpenAI HTTP client with retry policy
+builder.Services.AddHttpClient("OpenAiClient")
+    .AddPolicyHandler((serviceProvider, request) => HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .Or<TimeoutException>()
+        .WaitAndRetryAsync(
+            retryCount: 3,
+            sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+            onRetry: (outcome, timespan, retryAttempt, context) =>
+            {
+                var logger = serviceProvider.GetService<ILogger<Program>>();
+                logger?.LogWarning("OpenAI API retry attempt {RetryAttempt} after {Delay}ms due to: {Exception}",
+                    retryAttempt, timespan.TotalMilliseconds, outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString());
+            }));
+
+// AI client
 builder.Services.AddScoped<ThumbsUpApi.Services.IOpenAiClient, ThumbsUpApi.Services.OpenAiClient>();
 
 // Add HttpContextAccessor for accessing request information
@@ -86,8 +113,10 @@ builder.Services.AddScoped<ThumbsUpApi.Services.IImageOcrService, ThumbsUpApi.Se
 builder.Services.AddScoped<ThumbsUpApi.Services.IImageThemeService, ThumbsUpApi.Services.OpenAiThemeService>();
 builder.Services.AddScoped<ThumbsUpApi.Services.ITextGenerationService, ThumbsUpApi.Services.OpenAiTextService>();
 builder.Services.AddScoped<ThumbsUpApi.Services.IApprovalPredictor, ThumbsUpApi.Services.HybridApprovalPredictor>();
-builder.Services.AddScoped<ThumbsUpApi.Services.ImageAnalysisService>();
-builder.Services.AddScoped<ThumbsUpApi.Services.ReviewPredictorService>();
+// Orchestration services with interfaces
+builder.Services.AddScoped<ThumbsUpApi.Interfaces.IImageAnalysisService, ThumbsUpApi.Services.ImageAnalysisService>();
+builder.Services.AddScoped<ThumbsUpApi.Interfaces.IReviewPredictorService, ThumbsUpApi.Services.ReviewPredictorService>();
+// Queue and background worker
 builder.Services.AddSingleton<ThumbsUpApi.Services.ISubmissionAnalysisQueue, ThumbsUpApi.Services.SubmissionAnalysisQueue>();
 builder.Services.AddHostedService<ThumbsUpApi.Services.AiProcessingWorker>();
 

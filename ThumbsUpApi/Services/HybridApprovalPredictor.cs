@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ThumbsUpApi.Configuration;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
 
@@ -12,6 +13,7 @@ public class HybridApprovalPredictor : IApprovalPredictor
     private readonly ITextGenerationService _textGen;
     private readonly ILogger<HybridApprovalPredictor> _logger;
     private readonly AiOptions _aiOptions;
+    private readonly AiPredictorOptions _predictorOptions;
 
     public HybridApprovalPredictor(
         IContentFeatureRepository featureRepo,
@@ -19,7 +21,8 @@ public class HybridApprovalPredictor : IApprovalPredictor
         IReviewRepository reviewRepo,
         ITextGenerationService textGen,
         ILogger<HybridApprovalPredictor> logger,
-        Microsoft.Extensions.Options.IOptions<AiOptions> aiOptions)
+        Microsoft.Extensions.Options.IOptions<AiOptions> aiOptions,
+        Microsoft.Extensions.Options.IOptions<AiPredictorOptions> predictorOptions)
     {
         _featureRepo = featureRepo;
         _submissionRepo = submissionRepo;
@@ -27,6 +30,7 @@ public class HybridApprovalPredictor : IApprovalPredictor
         _textGen = textGen;
         _logger = logger;
         _aiOptions = aiOptions.Value;
+        _predictorOptions = predictorOptions.Value;
     }
 
     public async Task<(double probability, string rationale)> PredictApprovalAsync(Guid clientId, Guid submissionId, CancellationToken ct = default)
@@ -66,7 +70,7 @@ public class HybridApprovalPredictor : IApprovalPredictor
             .GroupBy(t => t).ToDictionary(g => g.Key, g => g.Count());
 
         int matchScore = tags.Count(t => freq.ContainsKey(t));
-        double tagBoost = matchScore * 0.05; // TODO: move to strongly-typed options if needed
+        double tagBoost = matchScore * _predictorOptions.TagWeight;
 
         // Simple logistic scoring
         double score = (clientApprovalRate - (1 - globalApprovalRate)) + tagBoost; // combine relative tendencies + tag match

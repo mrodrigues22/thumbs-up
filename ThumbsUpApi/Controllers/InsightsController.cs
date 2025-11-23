@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 using ThumbsUpApi.DTOs;
+using ThumbsUpApi.Interfaces;
 using ThumbsUpApi.Services;
 
 namespace ThumbsUpApi.Controllers;
@@ -14,11 +15,11 @@ namespace ThumbsUpApi.Controllers;
 [EnableRateLimiting("ai")]
 public class InsightsController : ControllerBase
 {
-    private readonly ReviewPredictorService _reviewPredictor;
+    private readonly IReviewPredictorService _reviewPredictor;
     private readonly IApprovalPredictor _approvalPredictor;
     private readonly ILogger<InsightsController> _logger;
 
-    public InsightsController(ReviewPredictorService reviewPredictor, IApprovalPredictor approvalPredictor, ILogger<InsightsController> logger)
+    public InsightsController(IReviewPredictorService reviewPredictor, IApprovalPredictor approvalPredictor, ILogger<InsightsController> logger)
     {
         _reviewPredictor = reviewPredictor;
         _approvalPredictor = approvalPredictor;

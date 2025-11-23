@@ -1,4 +1,5 @@
-using System.Text.Json.Serialization;
+using ThumbsUpApi.Configuration;
+using ThumbsUpApi.DTOs;
 
 namespace ThumbsUpApi.Services;
 
@@ -21,23 +22,23 @@ public class OpenAiTextService : ITextGenerationService
 
         try
         {
-            var request = new ChatCompletionsRequest
+            var request = new OpenAiChatRequest
             {
                 Model = model,
                 Messages = new[]
                 {
-                    new ChatMessage { Role = "system", Content = systemPrompt },
-                    new ChatMessage { Role = "user", Content = userPrompt }
+                    new OpenAiMessage { Role = "system", Content = systemPrompt },
+                    new OpenAiMessage { Role = "user", Content = userPrompt }
                 }
             };
 
-            var payload = await _client.PostAsync<ChatCompletionsRequest, ChatCompletionsResponse>("chat/completions", request, ct);
+            var payload = await _client.PostAsync<OpenAiChatRequest, OpenAiChatResponse>("chat/completions", request, ct);
             if (payload == null)
             {
                 return string.Empty;
             }
 
-            var content = payload.Choices?.FirstOrDefault()?.Message?.Content;
+            var content = payload.Choices?.FirstOrDefault()?.Message?.GetContentString();
             return content?.Trim() ?? string.Empty;
         }
         catch (Exception ex)
@@ -45,27 +46,5 @@ public class OpenAiTextService : ITextGenerationService
             _logger.LogError(ex, "OpenAI text generation exception");
             return string.Empty;
         }
-    }
-
-    private sealed class ChatCompletionsRequest
-    {
-        [JsonPropertyName("model")] public string Model { get; set; } = string.Empty;
-        [JsonPropertyName("messages")] public ChatMessage[] Messages { get; set; } = Array.Empty<ChatMessage>();
-    }
-
-    private sealed class ChatMessage
-    {
-        [JsonPropertyName("role")] public string Role { get; set; } = string.Empty;
-        [JsonPropertyName("content")] public string Content { get; set; } = string.Empty;
-    }
-
-    private sealed class ChatCompletionsResponse
-    {
-        [JsonPropertyName("choices")] public ChatChoice[]? Choices { get; set; }
-    }
-
-    private sealed class ChatChoice
-    {
-        [JsonPropertyName("message")] public ChatMessage? Message { get; set; }
     }
 }

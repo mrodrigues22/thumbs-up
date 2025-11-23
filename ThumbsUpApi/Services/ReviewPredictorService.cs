@@ -1,28 +1,33 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
-using ThumbsUpApi.Data;
+using ThumbsUpApi.Interfaces;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
 
 namespace ThumbsUpApi.Services;
 
-public class ReviewPredictorService
+public class ReviewPredictorService : IReviewPredictorService
 {
-    private readonly ApplicationDbContext _db;
     private readonly IClientRepository _clientRepository;
+    private readonly ISubmissionRepository _submissionRepo;
+    private readonly IReviewRepository _reviewRepo;
+    private readonly IContentFeatureRepository _featureRepo;
     private readonly IClientSummaryRepository _summaryRepo;
     private readonly ITextGenerationService _textGen;
     private readonly ILogger<ReviewPredictorService> _logger;
 
     public ReviewPredictorService(
-        ApplicationDbContext db,
         IClientRepository clientRepository,
+        ISubmissionRepository submissionRepo,
+        IReviewRepository reviewRepo,
+        IContentFeatureRepository featureRepo,
         IClientSummaryRepository summaryRepo,
         ITextGenerationService textGen,
         ILogger<ReviewPredictorService> logger)
     {
-        _db = db;
         _clientRepository = clientRepository;
+        _submissionRepo = submissionRepo;
+        _reviewRepo = reviewRepo;
+        _featureRepo = featureRepo;
         _summaryRepo = summaryRepo;
         _textGen = textGen;
         _logger = logger;
@@ -40,16 +45,11 @@ public class ReviewPredictorService
             return null;
         }
         
-        // Load submissions and reviews via DbContext while enforcing
-        // user-scoped client access via repository above.
-        var submissions = await _db.Submissions
-            .Where(s => s.ClientId == clientId)
-            .Select(s => s.Id)
-            .ToListAsync(ct);
-
-        var reviews = await _db.Reviews
-            .Where(r => submissions.Contains(r.SubmissionId))
-            .ToListAsync(ct);
+        // Load submissions and reviews through repositories
+        var submissions = (await _submissionRepo.GetByClientIdAsync(clientId, userId)).ToList();
+        var submissionIds = submissions.Select(s => s.Id).ToList();
+        
+        var reviews = (await _reviewRepo.GetByClientIdAsync(clientId, ct)).ToList();
 
         int approved = reviews.Count(r => r.Status == ReviewStatus.Approved);
         int rejected = reviews.Count(r => r.Status == ReviewStatus.Rejected);
@@ -67,9 +67,7 @@ public class ReviewPredictorService
             .Select(r => r.SubmissionId)
             .ToHashSet();
 
-        var features = await _db.ContentFeatures
-            .Where(f => approvedIds.Contains(f.SubmissionId))
-            .ToListAsync(ct);
+        var features = (await _featureRepo.GetBySubmissionIdsAsync(approvedIds, ct)).ToList();
 
         var tagFreq = features.SelectMany(f => DeserializeTags(f.ThemeTagsJson))
             .GroupBy(t => t)

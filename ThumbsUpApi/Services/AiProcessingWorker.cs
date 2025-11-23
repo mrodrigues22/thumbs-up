@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Hosting;
+using ThumbsUpApi.Interfaces;
 using ThumbsUpApi.Services;
 
 namespace ThumbsUpApi.Services;
@@ -24,7 +25,7 @@ public class AiProcessingWorker : BackgroundService
             try
             {
                 using var scope = _services.CreateScope();
-                var analysis = scope.ServiceProvider.GetRequiredService<ImageAnalysisService>();
+                var analysis = scope.ServiceProvider.GetRequiredService<IImageAnalysisService>();
                 await analysis.AnalyzeSubmissionAsync(submissionId, stoppingToken);
             }
             catch (Exception ex)
