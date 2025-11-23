@@ -193,6 +193,7 @@ export interface SubmissionResponse {
   review?: ReviewResponse;
   createdBy?: string;
   contentFeature?: ContentFeatureResponse;
+  contentSummary?: string;
 }
 
 export interface CreateSubmissionRequest {

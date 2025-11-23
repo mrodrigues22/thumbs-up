@@ -318,6 +318,17 @@ export default function SubmissionDetailPage() {
               </Card>
             )}
 
+            
+
+            {/* AI Content Summary */}
+            {submission.contentSummary && (
+              <Card title="AI Content Summary">
+                <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-200 whitespace-pre-line">
+                  {submission.contentSummary}
+                </p>
+              </Card>
+            )}
+
             <Card title="Creative Insights">
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
