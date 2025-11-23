@@ -50,7 +50,8 @@ public class InsightsController : ControllerBase
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
-        var (prob, rationale) = await _approvalPredictor.PredictApprovalAsync(request.ClientId, request.SubmissionId, ct);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var (prob, rationale) = await _approvalPredictor.PredictApprovalAsync(request.ClientId, request.SubmissionId, userId, ct);
         return Ok(new ApprovalPredictionResponse
         {
             ClientId = request.ClientId,

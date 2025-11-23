@@ -6,7 +6,6 @@ public interface ISubmissionRepository
 {
     Task<Submission?> GetByIdAsync(Guid id, string userId);
     Task<Submission?> GetByIdWithIncludesAsync(Guid id, string userId);
-    Task<Submission?> GetByIdSystemAsync(Guid id); // For internal system operations without user filtering
     Task<Submission?> GetByTokenAsync(string token);
     Task<Submission?> GetByTokenWithIncludesAsync(string token);
     Task<IEnumerable<Submission>> GetAllByUserIdAsync(string userId);
