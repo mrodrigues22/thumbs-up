@@ -23,7 +23,7 @@ public class OpenAiThemeService : IImageThemeService
         try
         {
             var bytes = await File.ReadAllBytesAsync(physicalPath, ct);
-            var base64 = Convert.ToBase64String(bytes);
+            var dataUrl = BuildImageDataUrl(bytes, physicalPath);
             var prompt = "List 3-8 concise lowercase one-word or hyphenated style/theme keywords for this image. Return comma-separated list only.";
             
             var request = new OpenAiChatRequest
@@ -37,7 +37,7 @@ public class OpenAiThemeService : IImageThemeService
                         Content = new OpenAiVisionContent[]
                         {
                             new() { Type = "text", Text = prompt },
-                            new() { Type = "image_url", ImageUrl = new OpenAiImageUrl { Url = $"data:image/png;base64,{base64}" } }
+                            new() { Type = "image_url", ImageUrl = new OpenAiImageUrl { Url = dataUrl } }
                         }
                     }
                 }
@@ -62,5 +62,29 @@ public class OpenAiThemeService : IImageThemeService
             _logger.LogError(ex, "OpenAI theme extraction exception for {Path}", physicalPath);
             return Array.Empty<string>();
         }
+    }
+
+    private static string BuildImageDataUrl(byte[] bytes, string physicalPath)
+    {
+        var base64 = Convert.ToBase64String(bytes);
+        var mimeType = GetMimeType(Path.GetExtension(physicalPath));
+        return $"data:{mimeType};base64,{base64}";
+    }
+
+    private static string GetMimeType(string extension)
+    {
+        return extension.ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".gif" => "image/gif",
+            ".bmp" => "image/bmp",
+            ".webp" => "image/webp",
+            ".svg" => "image/svg+xml",
+            ".heic" => "image/heic",
+            ".heif" => "image/heif",
+            ".tif" or ".tiff" => "image/tiff",
+            ".avif" => "image/avif",
+            _ => "image/png"
+        };
     }
 }

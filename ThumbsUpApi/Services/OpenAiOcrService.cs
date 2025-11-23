@@ -16,12 +16,13 @@ public class OpenAiOcrService : IImageOcrService
         _logger = logger;
     }
 
-    public async Task<string?> ExtractTextAsync(string base64Image, CancellationToken ct = default)
+    public async Task<string?> ExtractTextAsync(string physicalPath, CancellationToken ct = default)
     {
         var model = _options.VisionModel ?? _options.TextModel ?? "gpt-4o-mini";
 
         try
         {
+            var dataUrl = await BuildImageDataUrlAsync(physicalPath, ct);
             var prompt = "You are an OCR engine. Return ONLY all visible text from the image in reading order. No commentary.";
             
             var request = new OpenAiChatRequest
@@ -35,7 +36,7 @@ public class OpenAiOcrService : IImageOcrService
                         Content = new OpenAiVisionContent[]
                         {
                             new() { Type = "text", Text = prompt },
-                            new() { Type = "image_url", ImageUrl = new OpenAiImageUrl { Url = $"data:image/png;base64,{base64Image}" } }
+                            new() { Type = "image_url", ImageUrl = new OpenAiImageUrl { Url = dataUrl } }
                         }
                     }
                 }
@@ -55,5 +56,30 @@ public class OpenAiOcrService : IImageOcrService
             _logger.LogError(ex, "OpenAI OCR exception");
             return null;
         }
+    }
+
+    private static async Task<string> BuildImageDataUrlAsync(string physicalPath, CancellationToken ct)
+    {
+        var bytes = await File.ReadAllBytesAsync(physicalPath, ct);
+        var base64 = Convert.ToBase64String(bytes);
+        var mimeType = GetMimeType(Path.GetExtension(physicalPath));
+        return $"data:{mimeType};base64,{base64}";
+    }
+
+    private static string GetMimeType(string extension)
+    {
+        return extension.ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".gif" => "image/gif",
+            ".bmp" => "image/bmp",
+            ".webp" => "image/webp",
+            ".svg" => "image/svg+xml",
+            ".heic" => "image/heic",
+            ".heif" => "image/heif",
+            ".tif" or ".tiff" => "image/tiff",
+            ".avif" => "image/avif",
+            _ => "image/png"
+        };
     }
 }
