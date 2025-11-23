@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Layout } from '../components/layout';
-import { Card, Button, Input, Textarea, ErrorMessage } from '../components/common';
+import { Card, Button, Textarea, ErrorMessage } from '../components/common';
 import { reviewService } from '../services/reviewService';
 import type { SubmissionResponse } from '../shared/types';
 import { ReviewStatus, MediaFileType } from '../shared/types';
 import { toast } from 'react-toastify';
+import { useDarkMode } from '../hooks/useDarkMode';
 
 export default function ClientReviewPage() {
   const { token } = useParams<{ token: string }>();
-  const [password, setPassword] = useState('');
+  const [passwordDigits, setPasswordDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [authenticated, setAuthenticated] = useState(false);
   const [submission, setSubmission] = useState<SubmissionResponse | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<ReviewStatus | null>(null);
@@ -18,16 +19,62 @@ export default function ClientReviewPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const { isDarkMode } = useDarkMode();
+
+  const handleDigitChange = (index: number, value: string) => {
+    // Only allow single alphanumeric characters
+    if (value.length > 1) {
+      value = value.slice(-1);
+    }
+    
+    const newDigits = [...passwordDigits];
+    newDigits[index] = value.toUpperCase();
+    setPasswordDigits(newDigits);
+    
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`digit-${index + 1}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handleDigitPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').trim().toUpperCase();
+    
+    if (pastedData.length === 6) {
+      const newDigits = pastedData.split('').slice(0, 6);
+      setPasswordDigits(newDigits);
+      
+      // Focus the last input
+      const lastInput = document.getElementById('digit-5');
+      lastInput?.focus();
+    }
+  };
+
+  const handleDigitKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !passwordDigits[index] && index > 0) {
+      const prevInput = document.getElementById(`digit-${index - 1}`);
+      prevInput?.focus();
+    }
+  };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
     
+    const fullPassword = passwordDigits.join('');
+    if (fullPassword.length < 6) {
+      setError('Please enter all 6 characters');
+      toast.error('Please enter all 6 characters');
+      return;
+    }
+    
     setError('');
     setLoading(true);
 
     try {
-      const data = await reviewService.getSubmissionByToken(token, password);
+      const data = await reviewService.getSubmissionByToken(token, fullPassword);
       
       // Check if already reviewed
       if (data.review) {
@@ -62,10 +109,11 @@ export default function ClientReviewPage() {
     setError('');
     setLoading(true);
 
+    const fullPassword = passwordDigits.join('');
     try {
       await reviewService.submitReview({
         accessToken: token,
-        accessPassword: password,
+        accessPassword: fullPassword,
         status: selectedStatus,
         comment: comment || undefined,
       });
@@ -110,10 +158,11 @@ export default function ClientReviewPage() {
           <div className="max-w-md w-full">
             {/* Header */}
             <div className="text-center mb-8">
-              <span className="text-6xl">👍</span>
-              <h2 className="mt-4 text-3xl font-extrabold text-gray-900">
-                Review Access
-              </h2>
+              <img 
+                              src={isDarkMode ? "/logo-light.svg" : "/logo.svg"}
+                              className="h-12 cursor-pointer mx-auto" 
+                              alt="Logo" 
+                          />
               <p className="mt-2 text-sm text-gray-600">
                 Enter the password to view and review the submission
               </p>
@@ -126,16 +175,31 @@ export default function ClientReviewPage() {
               )}
 
               <form onSubmit={handlePasswordSubmit} className="space-y-6">
-                <Input
-                  label="Access Password"
-                  name="password"
-                  type="password"
-                  value={password}
-                  onChange={setPassword}
-                  required
-                  placeholder="Enter the password"
-                  autoComplete="off"
-                />
+                <div>
+                  <label className="block text-sm text-center font-medium text-gray-700 mb-3">
+                    Access password
+                  </label>
+                  <div className="flex justify-center gap-2">
+                    {passwordDigits.map((digit, index) => (
+                      <input
+                        key={index}
+                        id={`digit-${index}`}
+                        type="text"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleDigitChange(index, e.target.value)}
+                        onKeyDown={(e) => handleDigitKeyDown(index, e)}
+                        onPaste={handleDigitPaste}
+                        className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all uppercase"
+                        autoComplete="off"
+                        autoFocus={index === 0}
+                      />
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500 text-center">
+                    Enter the 6-character access code
+                  </p>
+                </div>
 
                 <Button
                   type="submit"
@@ -144,7 +208,7 @@ export default function ClientReviewPage() {
                   loading={loading}
                   disabled={loading}
                 >
-                  Access Review
+                  Access review
                 </Button>
               </form>
 
