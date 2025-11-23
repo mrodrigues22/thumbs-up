@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 using System.Text.RegularExpressions;
 using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Services;
@@ -27,7 +28,8 @@ public class InsightsController : ControllerBase
     [HttpGet("clients/{clientId}/summary")]
     public async Task<ActionResult<ClientSummaryResponse>> GetClientSummary(Guid clientId, CancellationToken ct)
     {
-        var summary = await _reviewPredictor.GetOrRefreshSummaryAsync(clientId, ct);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var summary = await _reviewPredictor.GetOrRefreshSummaryAsync(clientId, userId, ct);
         if (summary == null)
         {
             return NotFound(new { message = "Client not found or no data." });

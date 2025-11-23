@@ -9,17 +9,20 @@ namespace ThumbsUpApi.Services;
 public class ReviewPredictorService
 {
     private readonly ApplicationDbContext _db;
+    private readonly IClientRepository _clientRepository;
     private readonly IClientSummaryRepository _summaryRepo;
     private readonly ITextGenerationService _textGen;
     private readonly ILogger<ReviewPredictorService> _logger;
 
     public ReviewPredictorService(
         ApplicationDbContext db,
+        IClientRepository clientRepository,
         IClientSummaryRepository summaryRepo,
         ITextGenerationService textGen,
         ILogger<ReviewPredictorService> logger)
     {
         _db = db;
+        _clientRepository = clientRepository;
         _summaryRepo = summaryRepo;
         _textGen = textGen;
         _logger = logger;
@@ -28,17 +31,26 @@ public class ReviewPredictorService
     /// <summary>
     /// Gets or rebuilds a cached client summary. Rebuild conditions: no summary exists OR approved/rejected review count changed.
     /// </summary>
-    public async Task<ClientSummary?> GetOrRefreshSummaryAsync(Guid clientId, CancellationToken ct = default)
+    public async Task<ClientSummary?> GetOrRefreshSummaryAsync(Guid clientId, string userId, CancellationToken ct = default)
     {
-        var client = await _db.Clients.FirstOrDefaultAsync(c => c.Id == clientId, ct);
+        var client = await _clientRepository.GetByIdAsync(clientId, userId);
         if (client == null)
         {
             _logger.LogWarning("Client {ClientId} not found for summary", clientId);
             return null;
         }
+        
+        // Load submissions and reviews via DbContext while enforcing
+        // user-scoped client access via repository above.
+        var submissions = await _db.Submissions
+            .Where(s => s.ClientId == clientId)
+            .Select(s => s.Id)
+            .ToListAsync(ct);
 
-        var submissions = await _db.Submissions.Where(s => s.ClientId == clientId).Select(s => s.Id).ToListAsync(ct);
-        var reviews = await _db.Reviews.Where(r => submissions.Contains(r.SubmissionId)).ToListAsync(ct);
+        var reviews = await _db.Reviews
+            .Where(r => submissions.Contains(r.SubmissionId))
+            .ToListAsync(ct);
+
         int approved = reviews.Count(r => r.Status == ReviewStatus.Approved);
         int rejected = reviews.Count(r => r.Status == ReviewStatus.Rejected);
 
@@ -50,10 +62,15 @@ public class ReviewPredictorService
         {
             return existing;
         }
-
         // Collect tags from approved content features
-        var approvedIds = reviews.Where(r => r.Status == ReviewStatus.Approved).Select(r => r.SubmissionId).ToHashSet();
-        var features = await _db.ContentFeatures.Where(f => approvedIds.Contains(f.SubmissionId)).ToListAsync(ct);
+        var approvedIds = reviews.Where(r => r.Status == ReviewStatus.Approved)
+            .Select(r => r.SubmissionId)
+            .ToHashSet();
+
+        var features = await _db.ContentFeatures
+            .Where(f => approvedIds.Contains(f.SubmissionId))
+            .ToListAsync(ct);
+
         var tagFreq = features.SelectMany(f => DeserializeTags(f.ThemeTagsJson))
             .GroupBy(t => t)
             .OrderByDescending(g => g.Count())
