@@ -19,12 +19,63 @@ public class OpenAiOcrService : IImageOcrService
     public async Task<string?> ExtractTextAsync(string physicalPath, CancellationToken ct = default)
     {
         var model = _options.VisionModel ?? _options.TextModel ?? "gpt-4o-mini";
+        return _options.UseResponsesApi
+            ? await ExtractWithResponsesAsync(model, physicalPath, ct)
+            : await ExtractWithChatAsync(model, physicalPath, ct);
+    }
 
+    private async Task<string?> ExtractWithResponsesAsync(string model, string physicalPath, CancellationToken ct)
+    {
+        const string prompt = "You are an OCR engine. Return ONLY all visible text from the image in reading order. No commentary.";
+        string? fileId = null;
+
+        try
+        {
+            await using (var stream = File.OpenRead(physicalPath))
+            {
+                var upload = await _client.UploadFileAsync(stream, Path.GetFileName(physicalPath), "vision", ct)
+                             ?? throw new InvalidOperationException("OpenAI returned no payload for file upload");
+                fileId = upload.Id;
+            }
+
+            var request = new OpenAiResponseRequest
+            {
+                Model = model,
+                Input = new[]
+                {
+                    new OpenAiResponseMessage
+                    {
+                        Role = "user",
+                        Content = new[]
+                        {
+                            new OpenAiResponseContent { Type = "input_text", Text = prompt },
+                            new OpenAiResponseContent { Type = "input_image", ImageFile = new OpenAiResponseImageFile { FileId = fileId! } }
+                        }
+                    }
+                }
+            };
+
+            var payload = await _client.PostResponsesAsync<OpenAiResponseRequest, OpenAiResponsePayload>(request, ct);
+            return payload?.GetFirstTextOutput();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "OpenAI OCR exception");
+            throw;
+        }
+        finally
+        {
+            await DeleteUploadedFileAsync(fileId);
+        }
+    }
+
+    private async Task<string?> ExtractWithChatAsync(string model, string physicalPath, CancellationToken ct)
+    {
         try
         {
             var dataUrl = await BuildImageDataUrlAsync(physicalPath, ct);
             var prompt = "You are an OCR engine. Return ONLY all visible text from the image in reading order. No commentary.";
-            
+
             var request = new OpenAiChatRequest
             {
                 Model = model,
@@ -43,18 +94,13 @@ public class OpenAiOcrService : IImageOcrService
             };
 
             var payload = await _client.PostAsync<OpenAiChatRequest, OpenAiChatResponse>("chat/completions", request, ct);
-            if (payload == null)
-            {
-                return null;
-            }
-            
-            var content = payload.Choices?.FirstOrDefault()?.Message?.GetContentString();
+            var content = payload?.Choices?.FirstOrDefault()?.Message?.GetContentString();
             return string.IsNullOrWhiteSpace(content) ? null : content.Trim();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OpenAI OCR exception");
-            return null;
+            _logger.LogError(ex, "OpenAI OCR exception in chat fallback");
+            throw;
         }
     }
 
@@ -81,5 +127,22 @@ public class OpenAiOcrService : IImageOcrService
             ".avif" => "image/avif",
             _ => "image/png"
         };
+    }
+
+    private async Task DeleteUploadedFileAsync(string? fileId)
+    {
+        if (string.IsNullOrWhiteSpace(fileId))
+        {
+            return;
+        }
+
+        try
+        {
+            await _client.DeleteFileAsync(fileId, CancellationToken.None);
+        }
+        catch (Exception cleanupEx)
+        {
+            _logger.LogWarning(cleanupEx, "Failed to delete temporary OpenAI file {FileId}", fileId);
+        }
     }
 }

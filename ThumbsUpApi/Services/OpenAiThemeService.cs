@@ -25,14 +25,22 @@ public class OpenAiThemeService : IImageThemeService
     public async Task<ThemeInsights> ExtractThemesAsync(string physicalPath, CancellationToken ct = default)
     {
         var model = _options.VisionModel ?? _options.TextModel ?? "gpt-4o-mini";
-        byte[]? bytes = null;
+        byte[] imageBytes = Array.Empty<byte>();
+        string? fileId = null;
 
         try
         {
-            bytes = await File.ReadAllBytesAsync(physicalPath, ct);
-            var dataUrl = BuildImageDataUrl(bytes, physicalPath);
+            imageBytes = await File.ReadAllBytesAsync(physicalPath, ct);
 
-            var structuredText = await SendVisionRequestAsync(model, dataUrl, StructuredPrompt, ct);
+            if (_options.UseResponsesApi)
+            {
+                await using var stream = new MemoryStream(imageBytes, writable: false);
+                var upload = await _client.UploadFileAsync(stream, Path.GetFileName(physicalPath), "vision", ct)
+                             ?? throw new InvalidOperationException("OpenAI returned no payload for file upload");
+                fileId = upload.Id;
+            }
+
+            var structuredText = await SendVisionRequestAsync(model, StructuredPrompt, physicalPath, fileId, imageBytes, ct);
             var structuredInsights = ThemeInsights.FromModelResponse(structuredText);
             if (structuredInsights.HasAnyData)
             {
@@ -40,10 +48,10 @@ public class OpenAiThemeService : IImageThemeService
             }
 
             _logger.LogWarning("Structured theme extraction returned empty for {Path}; retrying with fallback prompt", physicalPath);
-            var fallbackText = await SendVisionRequestAsync(model, dataUrl, FallbackPrompt, ct);
+            var fallbackText = await SendVisionRequestAsync(model, FallbackPrompt, physicalPath, fileId, imageBytes, ct);
             var fallbackTags = ParseFallbackTags(fallbackText);
 
-            var heuristicInsights = BuildFallbackInsights(bytes, physicalPath);
+            var heuristicInsights = BuildFallbackInsights(imageBytes, physicalPath);
 
             if (fallbackTags.Count > 0)
             {
@@ -66,9 +74,9 @@ public class OpenAiThemeService : IImageThemeService
         catch (Exception ex)
         {
             _logger.LogError(ex, "OpenAI theme extraction exception for {Path}", physicalPath);
-            if (bytes is { Length: > 0 })
+            if (imageBytes.Length > 0)
             {
-                var heuristics = BuildFallbackInsights(bytes, physicalPath);
+                var heuristics = BuildFallbackInsights(imageBytes, physicalPath);
                 if (heuristics.HasAnyData)
                 {
                     _logger.LogInformation("Fell back to heuristic theme insights for {Path}", physicalPath);
@@ -78,11 +86,44 @@ public class OpenAiThemeService : IImageThemeService
 
             return ThemeInsights.Empty;
         }
+        finally
+        {
+            await DeleteUploadedFileAsync(fileId);
+        }
     }
 
-    private async Task<string> SendVisionRequestAsync(string model, string dataUrl, string prompt, CancellationToken ct)
+    private async Task<string> SendVisionRequestAsync(string model, string prompt, string physicalPath, string? fileId, byte[] imageBytes, CancellationToken ct)
     {
-        var request = new OpenAiChatRequest
+        if (_options.UseResponsesApi)
+        {
+            if (string.IsNullOrWhiteSpace(fileId))
+            {
+                throw new InvalidOperationException("Vision file reference missing for responses call.");
+            }
+
+            var request = new OpenAiResponseRequest
+            {
+                Model = model,
+                Input = new[]
+                {
+                    new OpenAiResponseMessage
+                    {
+                        Role = "user",
+                        Content = new[]
+                        {
+                            new OpenAiResponseContent { Type = "input_text", Text = prompt },
+                            new OpenAiResponseContent { Type = "input_image", ImageFile = new OpenAiResponseImageFile { FileId = fileId } }
+                        }
+                    }
+                }
+            };
+
+            var payload = await _client.PostResponsesAsync<OpenAiResponseRequest, OpenAiResponsePayload>(request, ct);
+            return payload?.GetFirstTextOutput() ?? string.Empty;
+        }
+
+        var dataUrl = BuildImageDataUrl(imageBytes, Path.GetExtension(physicalPath));
+        var chatRequest = new OpenAiChatRequest
         {
             Model = model,
             Messages = new[]
@@ -100,14 +141,14 @@ public class OpenAiThemeService : IImageThemeService
             }
         };
 
-        var payload = await _client.PostAsync<OpenAiChatRequest, OpenAiChatResponse>("chat/completions", request, ct);
-        return payload?.Choices?.FirstOrDefault()?.Message?.GetContentString() ?? string.Empty;
+        var chatPayload = await _client.PostAsync<OpenAiChatRequest, OpenAiChatResponse>("chat/completions", chatRequest, ct);
+        return chatPayload?.Choices?.FirstOrDefault()?.Message?.GetContentString() ?? string.Empty;
     }
 
-    private static string BuildImageDataUrl(byte[] bytes, string physicalPath)
+    private static string BuildImageDataUrl(byte[] bytes, string extension)
     {
         var base64 = Convert.ToBase64String(bytes);
-        var mimeType = GetMimeType(Path.GetExtension(physicalPath));
+        var mimeType = GetMimeType(extension);
         return $"data:{mimeType};base64,{base64}";
     }
 
@@ -126,6 +167,23 @@ public class OpenAiThemeService : IImageThemeService
             ".avif" => "image/avif",
             _ => "image/png"
         };
+    }
+
+    private async Task DeleteUploadedFileAsync(string? fileId)
+    {
+        if (!_options.UseResponsesApi || string.IsNullOrWhiteSpace(fileId))
+        {
+            return;
+        }
+
+        try
+        {
+            await _client.DeleteFileAsync(fileId, CancellationToken.None);
+        }
+        catch (Exception cleanupEx)
+        {
+            _logger.LogWarning(cleanupEx, "Failed to delete temporary OpenAI file {FileId}", fileId);
+        }
     }
 
     private static List<string> ParseFallbackTags(string text)
