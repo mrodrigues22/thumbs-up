@@ -1,41 +1,28 @@
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 
 namespace ThumbsUpApi.Services;
 
 public class OpenAiOcrService : IImageOcrService
 {
-    private readonly IConfiguration _configuration;
+    private readonly AiOptions _options;
+    private readonly IOpenAiClient _client;
     private readonly ILogger<OpenAiOcrService> _logger;
-    private readonly IHttpClientFactory _httpClientFactory;
 
-    public OpenAiOcrService(IConfiguration configuration, ILogger<OpenAiOcrService> logger, IHttpClientFactory httpClientFactory)
+    public OpenAiOcrService(Microsoft.Extensions.Options.IOptions<AiOptions> options, IOpenAiClient client, ILogger<OpenAiOcrService> logger)
     {
-        _configuration = configuration;
+        _options = options.Value;
+        _client = client;
         _logger = logger;
-        _httpClientFactory = httpClientFactory;
     }
 
     public async Task<string?> ExtractTextAsync(string physicalPath, CancellationToken ct = default)
     {
-        var apiKey = _configuration["Ai:OpenAi:ApiKey"] ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            _logger.LogWarning("OpenAI API key not configured for OCR.");
-            return null;
-        }
-
-        var model = _configuration["Ai:OpenAi:VisionModel"] ?? _configuration["Ai:OpenAi:Model"] ?? "gpt-5-mini";
+        var model = _options.VisionModel ?? _options.TextModel ?? "gpt-5-mini";
 
         try
         {
             var bytes = await File.ReadAllBytesAsync(physicalPath, ct);
             var base64 = Convert.ToBase64String(bytes);
-            var client = _httpClientFactory.CreateClient();
-            client.BaseAddress = new Uri("https://api.openai.com/v1/");
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
             var prompt = "You are an OCR engine. Return ONLY all visible text from the image in reading order. No commentary.";
             var request = new ChatCompletionsVisionRequest
             {
@@ -54,14 +41,11 @@ public class OpenAiOcrService : IImageOcrService
                 }
             };
 
-            using var response = await client.PostAsJsonAsync("chat/completions", request, ct);
-            if (!response.IsSuccessStatusCode)
+            var payload = await _client.PostAsync<ChatCompletionsVisionRequest, VisionResponse>("chat/completions", request, ct);
+            if (payload == null)
             {
-                _logger.LogWarning("OpenAI OCR failed {StatusCode}", response.StatusCode);
                 return null;
             }
-
-            var payload = await response.Content.ReadFromJsonAsync<VisionResponse>(cancellationToken: ct);
             var content = payload?.Choices?.FirstOrDefault()?.Message?.ContentString();
             return string.IsNullOrWhiteSpace(content) ? null : content.Trim();
         }

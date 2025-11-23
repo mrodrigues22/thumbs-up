@@ -1,6 +1,4 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
-using ThumbsUpApi.Data;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
 
@@ -8,47 +6,43 @@ namespace ThumbsUpApi.Services;
 
 public class HybridApprovalPredictor : IApprovalPredictor
 {
-    private readonly ApplicationDbContext _db;
     private readonly IContentFeatureRepository _featureRepo;
+    private readonly ISubmissionRepository _submissionRepo;
+    private readonly IReviewRepository _reviewRepo;
     private readonly ITextGenerationService _textGen;
     private readonly ILogger<HybridApprovalPredictor> _logger;
-    private readonly IConfiguration _configuration;
+    private readonly AiOptions _aiOptions;
 
     public HybridApprovalPredictor(
-        ApplicationDbContext db,
         IContentFeatureRepository featureRepo,
+        ISubmissionRepository submissionRepo,
+        IReviewRepository reviewRepo,
         ITextGenerationService textGen,
         ILogger<HybridApprovalPredictor> logger,
-        IConfiguration configuration)
+        Microsoft.Extensions.Options.IOptions<AiOptions> aiOptions)
     {
-        _db = db;
         _featureRepo = featureRepo;
+        _submissionRepo = submissionRepo;
+        _reviewRepo = reviewRepo;
         _textGen = textGen;
         _logger = logger;
-        _configuration = configuration;
+        _aiOptions = aiOptions.Value;
     }
 
     public async Task<(double probability, string rationale)> PredictApprovalAsync(Guid clientId, Guid submissionId, CancellationToken ct = default)
     {
         // Fetch data
-        var client = await _db.Clients.FirstOrDefaultAsync(c => c.Id == clientId, ct);
-        var submission = await _db.Submissions.Include(s => s.ContentFeature).FirstOrDefaultAsync(s => s.Id == submissionId, ct);
+        var submission = await _submissionRepo.GetByIdAsync(submissionId, userId: string.Empty) // user filtering not needed here
+                         ?? await _submissionRepo.GetByTokenAsync(submissionId.ToString());
+        var client = submission?.Client;
         if (client == null || submission == null)
         {
             return (0.0, "Client or submission not found");
         }
 
-        // Gather client's past reviews
-        var clientSubmissionIds = await _db.Submissions.Where(s => s.ClientId == clientId).Select(s => s.Id).ToListAsync(ct);
-        var clientReviews = await _db.Reviews.Where(r => clientSubmissionIds.Contains(r.SubmissionId)).ToListAsync(ct);
-
-        var approvedCount = clientReviews.Count(r => r.Status == ReviewStatus.Approved);
-        var rejectedCount = clientReviews.Count(r => r.Status == ReviewStatus.Rejected);
-        var totalClientReviews = approvedCount + rejectedCount;
-
-        var globalApproved = await _db.Reviews.CountAsync(r => r.Status == ReviewStatus.Approved, ct);
-        var globalRejected = await _db.Reviews.CountAsync(r => r.Status == ReviewStatus.Rejected, ct);
-        var globalTotal = globalApproved + globalRejected;
+        // Gather client's past reviews and global stats via repository
+        (int approvedCount, int rejectedCount, int totalClientReviews) = await _reviewRepo.GetClientStatsAsync(clientId, ct);
+        (int globalApproved, int globalRejected, int globalTotal) = await _reviewRepo.GetGlobalStatsAsync(ct);
 
         // Base rates
         double clientApprovalRate = totalClientReviews > 0 ? (double)approvedCount / totalClientReviews : 0.5; // neutral prior
@@ -58,13 +52,21 @@ public class HybridApprovalPredictor : IApprovalPredictor
         var feature = submission.ContentFeature ?? await _featureRepo.GetBySubmissionIdAsync(submissionId);
         var tags = ParseTags(feature?.ThemeTagsJson);
         // Compute frequent tags from client's approved submissions
-        var approvedIds = clientReviews.Where(r => r.Status == ReviewStatus.Approved).Select(r => r.SubmissionId).ToHashSet();
-        var approvedFeatures = await _db.ContentFeatures.Where(f => approvedIds.Contains(f.SubmissionId)).ToListAsync(ct);
+        var clientSubmissionIds = await _submissionRepo.GetByClientIdAsync(clientId, userId: string.Empty);
+        var approvedIds = clientSubmissionIds
+            .SelectMany(s => s.Review != null && s.Review.Status == ReviewStatus.Approved ? new[] { s.Id } : Array.Empty<Guid>())
+            .ToHashSet();
+        var approvedFeatures = new List<ContentFeature>();
+        foreach (var id in approvedIds)
+        {
+            var f = await _featureRepo.GetBySubmissionIdAsync(id);
+            if (f != null) approvedFeatures.Add(f);
+        }
         var freq = approvedFeatures.SelectMany(f => ParseTags(f.ThemeTagsJson))
             .GroupBy(t => t).ToDictionary(g => g.Key, g => g.Count());
 
         int matchScore = tags.Count(t => freq.ContainsKey(t));
-        double tagBoost = matchScore * _configuration.GetValue<double>("Ai:Predictor:TagWeight", 0.05); // small incremental boosts
+        double tagBoost = matchScore * 0.05; // TODO: move to strongly-typed options if needed
 
         // Simple logistic scoring
         double score = (clientApprovalRate - (1 - globalApprovalRate)) + tagBoost; // combine relative tendencies + tag match
@@ -84,7 +86,7 @@ public class HybridApprovalPredictor : IApprovalPredictor
         var userPrompt = $"Client Name: {client.Name ?? "(unknown)"}\nClient Approval Rate: {clientApprovalRate:P0}\nSubmission Tags: {string.Join(", ", tags)}\nTag Matches With Prior Approved Content: {matchScore}\nPredicted Probability: {probability:P0}\nProvide 2-3 bullet points rationale, referencing style or themes.";
 
         // If no text model configured, return static rationale
-        var openAiModel = _configuration["Ai:OpenAi:Model"] ?? Environment.GetEnvironmentVariable("OPENAI_MODEL");
+        var openAiModel = _aiOptions.TextModel ?? Environment.GetEnvironmentVariable("OPENAI_MODEL");
         if (string.IsNullOrWhiteSpace(openAiModel))
         {
             return $"Predicted approval {probability:P0}. Matches: {matchScore}. (No GPT model configured.)";

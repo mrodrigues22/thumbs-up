@@ -1,40 +1,28 @@
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 
 namespace ThumbsUpApi.Services;
 
 public class OpenAiThemeService : IImageThemeService
 {
-    private readonly IConfiguration _configuration;
+    private readonly AiOptions _options;
+    private readonly IOpenAiClient _client;
     private readonly ILogger<OpenAiThemeService> _logger;
-    private readonly IHttpClientFactory _httpClientFactory;
 
-    public OpenAiThemeService(IConfiguration configuration, ILogger<OpenAiThemeService> logger, IHttpClientFactory httpClientFactory)
+    public OpenAiThemeService(Microsoft.Extensions.Options.IOptions<AiOptions> options, IOpenAiClient client, ILogger<OpenAiThemeService> logger)
     {
-        _configuration = configuration;
+        _options = options.Value;
+        _client = client;
         _logger = logger;
-        _httpClientFactory = httpClientFactory;
     }
 
     public async Task<IReadOnlyList<string>> ExtractThemesAsync(string physicalPath, CancellationToken ct = default)
     {
-        var apiKey = _configuration["Ai:OpenAi:ApiKey"] ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            _logger.LogWarning("OpenAI API key not configured for theme extraction.");
-            return Array.Empty<string>();
-        }
-        var model = _configuration["Ai:OpenAi:VisionModel"] ?? _configuration["Ai:OpenAi:Model"] ?? "gpt-5-mini";
+        var model = _options.VisionModel ?? _options.TextModel ?? "gpt-5-mini";
 
         try
         {
             var bytes = await File.ReadAllBytesAsync(physicalPath, ct);
             var base64 = Convert.ToBase64String(bytes);
-            var client = _httpClientFactory.CreateClient();
-            client.BaseAddress = new Uri("https://api.openai.com/v1/");
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
             var prompt = "List 3-8 concise lowercase one-word or hyphenated style/theme keywords for this image. Return comma-separated list only.";
             var request = new VisionRequest
             {
@@ -53,14 +41,11 @@ public class OpenAiThemeService : IImageThemeService
                 }
             };
 
-            using var response = await client.PostAsJsonAsync("chat/completions", request, ct);
-            if (!response.IsSuccessStatusCode)
+            var payload = await _client.PostAsync<VisionRequest, VisionResponse>("chat/completions", request, ct);
+            if (payload == null)
             {
-                _logger.LogWarning("OpenAI theme extraction failed {StatusCode}", response.StatusCode);
                 return Array.Empty<string>();
             }
-
-            var payload = await response.Content.ReadFromJsonAsync<VisionResponse>(cancellationToken: ct);
             var text = payload?.Choices?.FirstOrDefault()?.Message?.ContentString() ?? string.Empty;
             var tags = text.Split(new[] { ',', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(t => t.Trim().ToLowerInvariant())

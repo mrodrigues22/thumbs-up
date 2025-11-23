@@ -9,4 +9,6 @@ public interface IReviewRepository
     Task<Review> CreateAsync(Review review);
     Task UpdateAsync(Review review);
     Task<bool> SaveChangesAsync();
+    Task<(int approved, int rejected, int total)> GetClientStatsAsync(Guid clientId, CancellationToken ct = default);
+    Task<(int approved, int rejected, int total)> GetGlobalStatsAsync(CancellationToken ct = default);
 }

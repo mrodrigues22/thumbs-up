@@ -42,4 +42,29 @@ public class ReviewRepository : IReviewRepository
     {
         return await _context.SaveChangesAsync() > 0;
     }
+
+    public async Task<(int approved, int rejected, int total)> GetClientStatsAsync(Guid clientId, CancellationToken ct = default)
+    {
+        var clientSubmissionIds = await _context.Submissions
+            .Where(s => s.ClientId == clientId)
+            .Select(s => s.Id)
+            .ToListAsync(ct);
+
+        var clientReviews = await _context.Reviews
+            .Where(r => clientSubmissionIds.Contains(r.SubmissionId))
+            .ToListAsync(ct);
+
+        var approved = clientReviews.Count(r => r.Status == ReviewStatus.Approved);
+        var rejected = clientReviews.Count(r => r.Status == ReviewStatus.Rejected);
+        var total = approved + rejected;
+        return (approved, rejected, total);
+    }
+
+    public async Task<(int approved, int rejected, int total)> GetGlobalStatsAsync(CancellationToken ct = default)
+    {
+        var approved = await _context.Reviews.CountAsync(r => r.Status == ReviewStatus.Approved, ct);
+        var rejected = await _context.Reviews.CountAsync(r => r.Status == ReviewStatus.Rejected, ct);
+        var total = approved + rejected;
+        return (approved, rejected, total);
+    }
 }
