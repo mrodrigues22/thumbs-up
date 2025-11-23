@@ -87,6 +87,9 @@ public class ContentFeatureResponse
     public List<string> Tags { get; set; } = new();
     public ThemeInsightsResponse? ThemeInsights { get; set; }
     public DateTime? ExtractedAt { get; set; }
+    public DateTime? LastAnalyzedAt { get; set; }
+    public ContentFeatureStatus? AnalysisStatus { get; set; }
+    public string? FailureReason { get; set; }
 }
 
 public class ThemeInsightsResponse

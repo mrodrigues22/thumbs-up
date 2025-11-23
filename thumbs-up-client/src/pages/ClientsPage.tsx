@@ -10,6 +10,7 @@ import { aiService } from '../services/aiService';
 import { Button, Card, ErrorMessage, Modal, Input, LoadingSpinner } from '../components/common';
 import { ClientsList } from '../components/clients';
 import type { Client, UpdateClientRequest, ClientSummaryResponse } from '../shared/types';
+import { SummaryDataStatus } from '../shared/types';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -277,6 +278,12 @@ export default function ClientsPage() {
                           <span className="text-gray-500">rejected</span>
                         </div>
                       </div>
+
+                      {aiSummary.dataStatus !== SummaryDataStatus.Ready && (
+                        <p className="text-xs text-amber-600">
+                          {aiSummary.missingSignals[0] ?? 'Insights will appear once this client has more analyzed submissions.'}
+                        </p>
+                      )}
 
                       {/* Style Preferences */}
                       {aiSummary.stylePreferences.length > 0 && (

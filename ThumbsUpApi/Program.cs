@@ -119,6 +119,7 @@ builder.Services.AddScoped<ThumbsUpApi.Interfaces.IReviewPredictorService, Thumb
 // Queue and background worker
 builder.Services.AddSingleton<ThumbsUpApi.Services.ISubmissionAnalysisQueue, ThumbsUpApi.Services.SubmissionAnalysisQueue>();
 builder.Services.AddHostedService<ThumbsUpApi.Services.AiProcessingWorker>();
+builder.Services.AddHostedService<ThumbsUpApi.Services.AnalysisBackfillWorker>();
 
 // Rate Limiting for AI endpoints
 builder.Services.AddRateLimiter(options =>

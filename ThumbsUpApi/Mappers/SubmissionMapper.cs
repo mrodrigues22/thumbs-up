@@ -74,7 +74,10 @@ public class SubmissionMapper
             OcrText = feature.OcrText,
             Tags = tags,
             ThemeInsights = BuildThemeInsightsResponse(insights),
-            ExtractedAt = feature.ExtractedAt
+            ExtractedAt = feature.ExtractedAt,
+            LastAnalyzedAt = feature.LastAnalyzedAt,
+            AnalysisStatus = feature.AnalysisStatus,
+            FailureReason = feature.FailureReason
         };
     }
 

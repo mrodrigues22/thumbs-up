@@ -50,14 +50,22 @@ public class HybridApprovalPredictor : IApprovalPredictor
         _predictorOptions = predictorOptions.Value;
     }
 
-    public async Task<(double probability, string rationale)> PredictApprovalAsync(Guid clientId, Guid submissionId, string userId, CancellationToken ct = default)
+    public async Task<ApprovalPredictionResponse> PredictApprovalAsync(Guid clientId, Guid submissionId, string userId, CancellationToken ct = default)
     {
         // Fetch data with user permission check
         var submission = await _submissionRepo.GetByIdWithIncludesAsync(submissionId, userId);
         var client = submission?.Client;
         if (client == null || submission == null)
         {
-            return (0.0, "Client or submission not found");
+            return new ApprovalPredictionResponse
+            {
+                ClientId = clientId,
+                SubmissionId = submissionId,
+                Probability = null,
+                Rationale = "- Client or submission not found.",
+                Status = ApprovalPredictionStatus.Error,
+                StatusMessage = "Client or submission not found."
+            };
         }
 
         // Gather client's past reviews and global stats via repository
@@ -70,6 +78,20 @@ public class HybridApprovalPredictor : IApprovalPredictor
 
         // Theme matching boost
         var feature = submission.ContentFeature ?? await _featureRepo.GetBySubmissionIdAsync(submissionId);
+        var readiness = EvaluateReadiness(feature);
+        if (!readiness.IsReady)
+        {
+            return new ApprovalPredictionResponse
+            {
+                ClientId = clientId,
+                SubmissionId = submissionId,
+                Probability = null,
+                Rationale = $"- {readiness.Message}",
+                Status = readiness.Status,
+                StatusMessage = readiness.Message
+            };
+        }
+
         var tags = ParseTags(feature?.ThemeTagsJson);
         var clientSubmissionIds = await _submissionRepo.GetByClientIdAsync(clientId, userId);
         var approvedIds = clientSubmissionIds
@@ -115,7 +137,17 @@ public class HybridApprovalPredictor : IApprovalPredictor
             summaryInfluence,
             ct);
 
-        return (probability, rationale);
+        return new ApprovalPredictionResponse
+        {
+            ClientId = clientId,
+            SubmissionId = submissionId,
+            Probability = probability,
+            Rationale = rationale,
+            Status = ApprovalPredictionStatus.Ready,
+            StatusMessage = readiness.LimitedSignals
+                ? "Scored with limited signals."
+                : "Scored using latest client and submission signals."
+        };
     }
 
     private async Task<string> BuildRationaleAsync(
@@ -217,6 +249,24 @@ Write the bullets now, starting each line with "- " and never mentioning metadat
         }
 
         return string.Join("\n", bullets.Select(b => $"- {b}"));
+    }
+
+    private PredictionReadiness EvaluateReadiness(ContentFeature? feature)
+    {
+        if (feature == null)
+        {
+            return new PredictionReadiness(false, ApprovalPredictionStatus.PendingSignals, "Waiting for image analysis to complete.", false);
+        }
+
+        return feature.AnalysisStatus switch
+        {
+            ContentFeatureStatus.Completed => new PredictionReadiness(true, ApprovalPredictionStatus.Ready, "Ready.", false),
+            ContentFeatureStatus.NoSignals => new PredictionReadiness(true, ApprovalPredictionStatus.Ready, "Limited signals detected for this submission.", true),
+            ContentFeatureStatus.Pending => new PredictionReadiness(false, ApprovalPredictionStatus.PendingSignals, "Image analysis still running for this submission.", false),
+            ContentFeatureStatus.Failed => new PredictionReadiness(false, ApprovalPredictionStatus.PendingSignals, feature.FailureReason ?? "Image analysis failed.", false),
+            ContentFeatureStatus.NoImages => new PredictionReadiness(false, ApprovalPredictionStatus.MissingHistory, "Submission has no image files to analyze.", false),
+            _ => new PredictionReadiness(false, ApprovalPredictionStatus.PendingSignals, "Waiting for analyzable signals.", false)
+        };
     }
 
     private List<string> ParseTags(string? json)
@@ -398,4 +448,6 @@ Write the bullets now, starting each line with "- " and never mentioning metadat
         public List<string> PositiveSignals { get; init; } = new();
         public List<string> RiskSignals { get; init; } = new();
     }
+
+    private sealed record PredictionReadiness(bool IsReady, ApprovalPredictionStatus Status, string Message, bool LimitedSignals);
 }

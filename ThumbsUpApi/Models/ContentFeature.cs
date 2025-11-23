@@ -14,7 +14,13 @@ public class ContentFeature
     // Stored as JSON array of strings for flexibility (e.g., ["minimal","warm","outdoor"]).
     public string? ThemeTagsJson { get; set; }
 
-    public DateTime ExtractedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ExtractedAt { get; set; }
+
+    public DateTime? LastAnalyzedAt { get; set; }
+
+    public ContentFeatureStatus AnalysisStatus { get; set; } = ContentFeatureStatus.Pending;
+
+    public string? FailureReason { get; set; }
 
     // Navigation
     public Submission Submission { get; set; } = null!;

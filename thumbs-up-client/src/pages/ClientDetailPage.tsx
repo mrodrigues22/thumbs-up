@@ -11,7 +11,8 @@ import { submissionService } from '../services/submissionService';
 import { aiService } from '../services/aiService';
 import { Button, Card, LoadingSpinner, ErrorMessage, Modal, Input, ImageCropper } from '../components/common';
 import { toast } from 'react-toastify';
-import type { Client, UpdateClientRequest, SubmissionResponse, SubmissionStatus, ClientSummaryResponse } from '../shared/types';
+import type { Client, UpdateClientRequest, SubmissionResponse, SubmissionStatus, ClientSummaryResponse, SummaryDataStatus as SummaryDataStatusValue } from '../shared/types';
+import { SummaryDataStatus } from '../shared/types';
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -40,6 +41,55 @@ export default function ClientDetailPage() {
   const approvalRate = clientSummary && totalDecisions > 0
     ? Math.round((clientSummary.approvedCount / totalDecisions) * 100)
     : 0;
+
+  const summaryCalloutStyles: Record<SummaryDataStatusValue, { title: string; border: string; bg: string; text: string }> = {
+    [SummaryDataStatus.PendingAnalysis]: {
+      title: 'Analysis in progress',
+      border: 'border-amber-300',
+      bg: 'bg-amber-50 dark:bg-amber-900/10',
+      text: 'text-amber-800',
+    },
+    [SummaryDataStatus.InsufficientHistory]: {
+      title: 'Need more reviews',
+      border: 'border-blue-300',
+      bg: 'bg-blue-50 dark:bg-blue-900/10',
+      text: 'text-blue-800',
+    },
+    [SummaryDataStatus.Partial]: {
+      title: 'Partial signals',
+      border: 'border-purple-300',
+      bg: 'bg-purple-50 dark:bg-purple-900/10',
+      text: 'text-purple-800',
+    },
+    [SummaryDataStatus.Ready]: {
+      title: 'Insights ready',
+      border: 'border-emerald-300',
+      bg: 'bg-emerald-50 dark:bg-emerald-900/10',
+      text: 'text-emerald-800',
+    },
+  };
+
+  const buildSummaryStatusBody = (summary: ClientSummaryResponse) => {
+    switch (summary.dataStatus) {
+      case SummaryDataStatus.PendingAnalysis:
+        return summary.pendingAnalysisCount > 0
+          ? `Image analysis is still running for ${summary.pendingAnalysisCount} submission${summary.pendingAnalysisCount === 1 ? '' : 's'}. Refresh to see updates.`
+          : 'Image analysis is still running for recent submissions.';
+      case SummaryDataStatus.InsufficientHistory:
+        return 'Once this client reviews at least one submission, we will highlight their preferences here.';
+      case SummaryDataStatus.Partial:
+        return summary.pendingAnalysisCount > 0
+          ? `${summary.featureCoverageCount} submission${summary.featureCoverageCount === 1 ? '' : 's'} already have signals. ${summary.pendingAnalysisCount} more in the queue.`
+          : 'Some submissions lack analyzable signals yet, so these insights may be incomplete.';
+      case SummaryDataStatus.Ready:
+      default:
+        return `${summary.featureCoverageCount} submission${summary.featureCoverageCount === 1 ? '' : 's'} powering these insights.`;
+    }
+  };
+
+  const summaryStatusStyle = clientSummary ? summaryCalloutStyles[clientSummary.dataStatus] : null;
+  const summaryStatusBody = clientSummary ? buildSummaryStatusBody(clientSummary) : '';
+  const shouldShowSummaryCallout = !!clientSummary && (clientSummary.dataStatus !== SummaryDataStatus.Ready || clientSummary.missingSignals.length > 0);
 
   useEffect(() => {
     if (!id) {
@@ -410,10 +460,29 @@ export default function ClientDetailPage() {
                     <p className="text-2xl font-bold text-emerald-600 mt-2">{approvalRate}%</p>
                   </div>
                   <div className="p-4 rounded-lg border border-gray-200 bg-gray-50 dark:bg-gray-800">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Decisions Analyzed</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">{totalDecisions}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Signals Ready</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">{clientSummary.featureCoverageCount}</p>
+                    {clientSummary.pendingAnalysisCount > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {clientSummary.pendingAnalysisCount} pending
+                      </p>
+                    )}
                   </div>
                 </div>
+
+                {clientSummary && shouldShowSummaryCallout && summaryStatusStyle && (
+                  <div className={`rounded-xl border ${summaryStatusStyle.border} ${summaryStatusStyle.bg} p-4`}>
+                    <p className={`text-sm font-semibold ${summaryStatusStyle.text}`}>{summaryStatusStyle.title}</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">{summaryStatusBody}</p>
+                    {clientSummary.missingSignals.length > 0 && (
+                      <ul className="mt-2 text-sm text-gray-700 dark:text-gray-200 list-disc pl-5 space-y-1">
+                        {clientSummary.missingSignals.map((signal, idx) => (
+                          <li key={`summary-gap-${idx}`}>{signal}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
 
                 <div className="grid gap-4 lg:grid-cols-3">
                   {clientSummary.stylePreferences.length > 0 && (
@@ -463,7 +532,10 @@ export default function ClientDetailPage() {
                   clientSummary.recurringPositives.length === 0 &&
                   clientSummary.rejectionReasons.length === 0 && (
                     <p className="text-sm text-gray-500 dark:text-gray-300">
-                      AI needs a few more submissions to describe this client&apos;s preferences in detail.
+                      {clientSummary.dataStatus === SummaryDataStatus.PendingAnalysis && 'Image analysis is wrapping up. Refresh once the queue clears to see insights.'}
+                      {clientSummary.dataStatus === SummaryDataStatus.InsufficientHistory && 'AI needs a few more reviewed submissions before it can describe this client in detail.'}
+                      {clientSummary.dataStatus !== SummaryDataStatus.PendingAnalysis && clientSummary.dataStatus !== SummaryDataStatus.InsufficientHistory &&
+                        'Signals are limited right now, but each new review will make these insights sharper.'}
                     </p>
                   )}
 

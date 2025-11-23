@@ -64,10 +64,23 @@ public class ImageAnalysisService : IImageAnalysisService
     private async Task<ContentFeature?> AnalyzeAndPersistAsync(Submission submission, CancellationToken ct)
     {
         var imageFiles = submission.MediaFiles.Where(m => m.FileType == MediaFileType.Image).ToList();
+        var attemptTimestamp = DateTime.UtcNow;
         if (imageFiles.Count == 0)
         {
             _logger.LogInformation("Submission {SubmissionId} has no image files for analysis", submission.Id);
-            return null;
+            var emptyFeature = new ContentFeature
+            {
+                SubmissionId = submission.Id,
+                OcrText = null,
+                ThemeTagsJson = null,
+                AnalysisStatus = ContentFeatureStatus.NoImages,
+                FailureReason = "Submission has no image files.",
+                LastAnalyzedAt = attemptTimestamp,
+                ExtractedAt = null
+            };
+            var storedEmpty = await _featureRepo.UpsertAsync(emptyFeature);
+            await _featureRepo.SaveChangesAsync();
+            return storedEmpty;
         }
 
         var analysisTasks = imageFiles
@@ -91,12 +104,39 @@ public class ImageAnalysisService : IImageAnalysisService
             .OrderBy(tag => tag)
             .ToList();
 
+        var hasSignals = ocrTexts.Count > 0 || combinedInsights.HasAnyData;
         var feature = new ContentFeature
         {
             SubmissionId = submission.Id,
             OcrText = ocrTexts.Count == 0 ? null : string.Join("\n", ocrTexts),
-            ThemeTagsJson = BuildThemePayload(combinedInsights, flattenedTags)
+            ThemeTagsJson = BuildThemePayload(combinedInsights, flattenedTags),
+            LastAnalyzedAt = attemptTimestamp
         };
+
+        if (hasSignals)
+        {
+            feature.AnalysisStatus = ContentFeatureStatus.Completed;
+            feature.FailureReason = null;
+            feature.ExtractedAt = attemptTimestamp;
+        }
+        else
+        {
+            var hadAnySuccess = results.Any(r => r.OcrSucceeded || r.ThemeSucceeded);
+            var aggregatedErrors = AggregateErrors(results);
+
+            if (hadAnySuccess)
+            {
+                feature.AnalysisStatus = ContentFeatureStatus.NoSignals;
+                feature.FailureReason = "Analyzed images but no text or visual signals detected.";
+                feature.ExtractedAt = attemptTimestamp;
+            }
+            else
+            {
+                feature.AnalysisStatus = ContentFeatureStatus.Failed;
+                feature.FailureReason = aggregatedErrors ?? "Analysis failed for all images.";
+                feature.ExtractedAt = null;
+            }
+        }
 
         var persisted = await _featureRepo.UpsertAsync(feature);
         await _featureRepo.SaveChangesAsync();
@@ -114,12 +154,16 @@ public class ImageAnalysisService : IImageAnalysisService
     {
         var physical = _fileStorage.GetPhysicalPath(media.FilePath);
 
+        string? ocrText = null;
+        ThemeInsights insights = ThemeInsights.Empty;
+        bool ocrSucceeded = false;
+        bool themeSucceeded = false;
+        var errors = new List<string>();
+
         try
         {
-            var ocrTask = _ocr.ExtractTextAsync(physical, ct);
-            var themeTask = _themes.ExtractThemesAsync(physical, ct);
-            await Task.WhenAll(ocrTask, themeTask);
-            return new MediaAnalysisResult(await ocrTask, await themeTask);
+            ocrText = await _ocr.ExtractTextAsync(physical, ct);
+            ocrSucceeded = !string.IsNullOrWhiteSpace(ocrText);
         }
         catch (OperationCanceledException)
         {
@@ -127,9 +171,43 @@ public class ImageAnalysisService : IImageAnalysisService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error analyzing media {MediaId} for submission {SubmissionId}", media.Id, submissionId);
-            return new MediaAnalysisResult(null, ThemeInsights.Empty);
+            _logger.LogError(ex, "OCR extraction failed for media {MediaId} (submission {SubmissionId})", media.Id, submissionId);
+            errors.Add($"ocr:{ex.GetType().Name}");
         }
+
+        try
+        {
+            insights = await _themes.ExtractThemesAsync(physical, ct);
+            themeSucceeded = insights.HasAnyData;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Theme extraction failed for media {MediaId} (submission {SubmissionId})", media.Id, submissionId);
+            errors.Add($"themes:{ex.GetType().Name}");
+            insights = ThemeInsights.Empty;
+        }
+
+        return new MediaAnalysisResult(ocrText, insights, ocrSucceeded, themeSucceeded, errors);
+    }
+
+    private static string? AggregateErrors(IEnumerable<MediaAnalysisResult> results)
+    {
+        var distinct = results
+            .SelectMany(r => r.Errors)
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .Distinct()
+            .ToList();
+
+        if (distinct.Count == 0)
+        {
+            return null;
+        }
+
+        return "Image analysis failed: " + string.Join(", ", distinct.Take(4));
     }
 
     private static string? BuildThemePayload(ThemeInsights insights, IReadOnlyCollection<string> fallbackTags)
@@ -142,5 +220,5 @@ public class ImageAnalysisService : IImageAnalysisService
         return fallbackTags.Count == 0 ? null : JsonSerializer.Serialize(fallbackTags);
     }
 
-    private sealed record MediaAnalysisResult(string? OcrText, ThemeInsights Insights);
+    private sealed record MediaAnalysisResult(string? OcrText, ThemeInsights Insights, bool OcrSucceeded, bool ThemeSucceeded, List<string> Errors);
 }

@@ -64,14 +64,8 @@ public class InsightsController : ControllerBase
         
         try
         {
-            var (prob, rationale) = await _approvalPredictor.PredictApprovalAsync(request.ClientId, request.SubmissionId, userId, ct);
-            return Ok(new ApprovalPredictionResponse
-            {
-                ClientId = request.ClientId,
-                SubmissionId = request.SubmissionId,
-                Probability = prob,
-                Rationale = rationale
-            });
+            var prediction = await _approvalPredictor.PredictApprovalAsync(request.ClientId, request.SubmissionId, userId, ct);
+            return Ok(prediction);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("API key"))
         {

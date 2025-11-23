@@ -20,12 +20,40 @@ export const MediaFileType = {
 
 export type MediaFileType = typeof MediaFileType[keyof typeof MediaFileType];
 
+export const ContentFeatureStatus = {
+  Pending: 'Pending',
+  Completed: 'Completed',
+  NoSignals: 'NoSignals',
+  NoImages: 'NoImages',
+  Failed: 'Failed',
+} as const;
+
+export type ContentFeatureStatus = typeof ContentFeatureStatus[keyof typeof ContentFeatureStatus];
+
 export const ReviewStatus = {
   Approved: 0,
   Rejected: 1,
 } as const;
 
 export type ReviewStatus = typeof ReviewStatus[keyof typeof ReviewStatus];
+
+export const SummaryDataStatus = {
+  PendingAnalysis: 'PendingAnalysis',
+  InsufficientHistory: 'InsufficientHistory',
+  Ready: 'Ready',
+  Partial: 'Partial',
+} as const;
+
+export type SummaryDataStatus = typeof SummaryDataStatus[keyof typeof SummaryDataStatus];
+
+export const ApprovalPredictionStatus = {
+  PendingSignals: 'PendingSignals',
+  Ready: 'Ready',
+  MissingHistory: 'MissingHistory',
+  Error: 'Error',
+} as const;
+
+export type ApprovalPredictionStatus = typeof ApprovalPredictionStatus[keyof typeof ApprovalPredictionStatus];
 
 export const UserRole = {
   User: 'User',
@@ -196,6 +224,10 @@ export interface ClientSummaryResponse {
   approvedCount: number;
   rejectedCount: number;
   generatedAt: string;
+  dataStatus: SummaryDataStatus;
+  missingSignals: string[];
+  pendingAnalysisCount: number;
+  featureCoverageCount: number;
 }
 
 export interface ApprovalPredictionRequest {
@@ -206,8 +238,10 @@ export interface ApprovalPredictionRequest {
 export interface ApprovalPredictionResponse {
   clientId: string;
   submissionId: string;
-  probability: number;
+  probability?: number | null;
   rationale: string;
+  status: ApprovalPredictionStatus;
+  statusMessage: string;
 }
 
 export interface ThemeInsightsResponse {
@@ -223,6 +257,9 @@ export interface ContentFeatureResponse {
   tags: string[];
   themeInsights?: ThemeInsightsResponse | null;
   extractedAt?: string | null;
+  lastAnalyzedAt?: string | null;
+  analysisStatus?: ContentFeatureStatus | null;
+  failureReason?: string | null;
 }
 
 // ===== Filter Types =====

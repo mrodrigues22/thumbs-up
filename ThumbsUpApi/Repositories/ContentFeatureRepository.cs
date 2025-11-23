@@ -34,7 +34,10 @@ public class ContentFeatureRepository : IContentFeatureRepository
 
         existing.OcrText = feature.OcrText;
         existing.ThemeTagsJson = feature.ThemeTagsJson;
-        existing.ExtractedAt = DateTime.UtcNow;
+        existing.ExtractedAt = feature.ExtractedAt;
+        existing.LastAnalyzedAt = feature.LastAnalyzedAt;
+        existing.AnalysisStatus = feature.AnalysisStatus;
+        existing.FailureReason = feature.FailureReason;
         return existing;
     }
 
