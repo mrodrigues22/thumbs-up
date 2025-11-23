@@ -5,7 +5,11 @@ namespace ThumbsUpApi.DTOs;
 public class ClientSummaryResponse
 {
     public Guid ClientId { get; set; }
-    public string Summary { get; set; } = string.Empty; // counts signature stripped
+    public List<string> StylePreferences { get; set; } = new();
+    public List<string> RecurringPositives { get; set; } = new();
+    public List<string> RejectionReasons { get; set; } = new();
+    public int ApprovedCount { get; set; }
+    public int RejectedCount { get; set; }
     public DateTime GeneratedAt { get; set; }
 }
 

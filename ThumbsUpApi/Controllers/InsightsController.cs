@@ -35,14 +35,76 @@ public class InsightsController : ControllerBase
         {
             return NotFound(new { message = "Client not found or no data." });
         }
-        // Strip counts signature token
+        
+        // Strip counts signature token and parse counts
         var cleaned = Regex.Replace(summary.SummaryText, @"\n\[counts:[0-9]+:[0-9]+\]$", string.Empty).Trim();
+        var countsMatch = Regex.Match(summary.SummaryText, @"\[counts:([0-9]+):([0-9]+)\]$");
+        var approved = countsMatch.Success ? int.Parse(countsMatch.Groups[1].Value) : 0;
+        var rejected = countsMatch.Success ? int.Parse(countsMatch.Groups[2].Value) : 0;
+        
+        // Parse sections from the summary text
+        var (stylePrefs, positives, rejections) = ParseSummarySections(cleaned);
+        
         return Ok(new ClientSummaryResponse
         {
             ClientId = clientId,
-            Summary = cleaned,
+            StylePreferences = stylePrefs,
+            RecurringPositives = positives,
+            RejectionReasons = rejections,
+            ApprovedCount = approved,
+            RejectedCount = rejected,
             GeneratedAt = summary.UpdatedAt
         });
+    }
+    
+    private (List<string> style, List<string> positives, List<string> rejections) ParseSummarySections(string summaryText)
+    {
+        var style = new List<string>();
+        var positives = new List<string>();
+        var rejections = new List<string>();
+        
+        if (string.IsNullOrWhiteSpace(summaryText))
+            return (style, positives, rejections);
+        
+        var lines = summaryText.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var currentSection = "";
+        
+        foreach (var line in lines)
+        {
+            var lower = line.ToLowerInvariant();
+            
+            // Detect section headers
+            if (lower.Contains("style") && (lower.Contains("preference") || lower.Contains(":") || lower.Contains("tendencies")))
+            {
+                currentSection = "style";
+                continue;
+            }
+            else if (lower.Contains("positive") || lower.Contains("strength") || lower.Contains("success"))
+            {
+                currentSection = "positives";
+                continue;
+            }
+            else if (lower.Contains("rejection") || lower.Contains("issue") || lower.Contains("concern"))
+            {
+                currentSection = "rejections";
+                continue;
+            }
+            
+            // Parse bullet points
+            var cleaned = line.TrimStart('-', '•', '*', '·').Trim();
+            if (string.IsNullOrWhiteSpace(cleaned))
+                continue;
+            
+            // Add to appropriate section
+            if (currentSection == "style" && !cleaned.EndsWith(':'))
+                style.Add(cleaned);
+            else if (currentSection == "positives" && !cleaned.EndsWith(':'))
+                positives.Add(cleaned);
+            else if (currentSection == "rejections" && !cleaned.EndsWith(':'))
+                rejections.Add(cleaned);
+        }
+        
+        return (style, positives, rejections);
     }
 
     [HttpPost("predict")]

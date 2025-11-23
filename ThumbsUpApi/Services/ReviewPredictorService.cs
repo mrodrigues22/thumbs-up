@@ -78,8 +78,8 @@ public class ReviewPredictorService : IReviewPredictorService
 
         var comments = reviews.Where(r => !string.IsNullOrWhiteSpace(r.Comment)).Select(r => r.Comment!.Trim()).ToList();
 
-        var systemPrompt = "You summarize a client's stylistic and preference tendencies from structured data only.";
-        var userPrompt = $"ClientName: {client.Name ?? client.Email}\nApprovedCount: {approved}\nRejectedCount: {rejected}\nTopTags: {string.Join(",", tagFreq.Select(t => t.Tag + ":" + t.Count))}\nRecentComments: {string.Join(" || ", comments.Take(10))}\nProvide: bullet points for style, recurring positives, common rejection reasons. Return under 120 words.";
+        var systemPrompt = "You summarize a client's stylistic and preference tendencies from structured data only. Always use clear section headers followed by bullet points.";
+        var userPrompt = $"ClientName: {client.Name ?? client.Email}\nApprovedCount: {approved}\nRejectedCount: {rejected}\nTopTags: {string.Join(",", tagFreq.Select(t => t.Tag + ":" + t.Count))}\nRecentComments: {string.Join(" || ", comments.Take(10))}\n\nFormat your response with these three sections:\nStyle Preferences:\n- [bullet points]\n\nRecurring Positives:\n- [bullet points]\n\nRejection Reasons:\n- [bullet points]\n\nKeep under 120 words total.";
         
         string summaryText;
         try

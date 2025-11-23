@@ -243,9 +243,71 @@ export default function ClientsPage() {
                   )}
 
                   {aiSummary && !aiLoading && !aiError && (
-                    <div className="text-sm text-gray-800 whitespace-pre-line border-t pt-3 mt-2">
-                      {aiSummary.summary}
-                      <p className="mt-2 text-xs text-gray-400">
+                    <div className="border-t pt-3 mt-2 space-y-4">
+                      {/* Stats */}
+                      <div className="flex gap-4 text-xs">
+                        <div className="flex items-center gap-1">
+                          <span className="font-semibold text-green-600">{aiSummary.approvedCount}</span>
+                          <span className="text-gray-500">approved</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="font-semibold text-red-600">{aiSummary.rejectedCount}</span>
+                          <span className="text-gray-500">rejected</span>
+                        </div>
+                      </div>
+
+                      {/* Style Preferences */}
+                      {aiSummary.stylePreferences.length > 0 && (
+                        <div>
+                          <h3 className="text-xs font-semibold text-purple-700 uppercase tracking-wide mb-1.5">
+                            Style Preferences
+                          </h3>
+                          <ul className="space-y-1">
+                            {aiSummary.stylePreferences.map((item, idx) => (
+                              <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                                <span className="text-purple-500 mt-0.5">•</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Recurring Positives */}
+                      {aiSummary.recurringPositives.length > 0 && (
+                        <div>
+                          <h3 className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1.5">
+                            Recurring Positives
+                          </h3>
+                          <ul className="space-y-1">
+                            {aiSummary.recurringPositives.map((item, idx) => (
+                              <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                                <span className="text-green-500 mt-0.5">✓</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Rejection Reasons */}
+                      {aiSummary.rejectionReasons.length > 0 && (
+                        <div>
+                          <h3 className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-1.5">
+                            Common Rejections
+                          </h3>
+                          <ul className="space-y-1">
+                            {aiSummary.rejectionReasons.map((item, idx) => (
+                              <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                                <span className="text-red-500 mt-0.5">✗</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <p className="text-xs text-gray-400 pt-2 border-t">
                         Updated {new Date(aiSummary.generatedAt).toLocaleString()}
                       </p>
                     </div>

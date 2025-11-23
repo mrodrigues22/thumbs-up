@@ -189,7 +189,11 @@ export interface UpdateSubmissionRequest {
 
 export interface ClientSummaryResponse {
   clientId: string;
-  summary: string;
+  stylePreferences: string[];
+  recurringPositives: string[];
+  rejectionReasons: string[];
+  approvedCount: number;
+  rejectedCount: number;
   generatedAt: string;
 }
 
