@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ThumbsUpApi.DTOs;
@@ -31,10 +32,48 @@ public sealed class OpenAiMessage
         return Content switch
         {
             string str => str,
+            JsonElement element => ExtractFromJsonElement(element),
             OpenAiVisionContent[] contents => string.Join("\n", 
                 contents.Where(c => c.Type == "text").Select(c => c.Text ?? string.Empty)),
             _ => string.Empty
         };
+    }
+
+    private static string ExtractFromJsonElement(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString() ?? string.Empty,
+            JsonValueKind.Array => string.Join("\n",
+                element.EnumerateArray().Select(ExtractFromJsonArrayItem).Where(s => !string.IsNullOrWhiteSpace(s))),
+            JsonValueKind.Object => ExtractTextFromJsonObject(element),
+            _ => string.Empty
+        };
+    }
+
+    private static string ExtractFromJsonArrayItem(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString() ?? string.Empty,
+            JsonValueKind.Object => ExtractTextFromJsonObject(element),
+            _ => string.Empty
+        };
+    }
+
+    private static string ExtractTextFromJsonObject(JsonElement element)
+    {
+        if (element.TryGetProperty("text", out var textElement))
+        {
+            return textElement.GetString() ?? string.Empty;
+        }
+
+        if (element.TryGetProperty("type", out var typeElement) && typeElement.GetString() == "text" && element.TryGetProperty("content", out var nestedContent))
+        {
+            return nestedContent.GetString() ?? string.Empty;
+        }
+
+        return string.Empty;
     }
 }
 

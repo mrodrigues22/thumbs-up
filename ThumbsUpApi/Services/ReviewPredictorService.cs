@@ -3,6 +3,7 @@ using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Interfaces;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
+using Microsoft.Extensions.Hosting;
 
 namespace ThumbsUpApi.Services;
 
@@ -15,6 +16,7 @@ public class ReviewPredictorService : IReviewPredictorService
     private readonly IClientSummaryRepository _summaryRepo;
     private readonly ITextGenerationService _textGen;
     private readonly ILogger<ReviewPredictorService> _logger;
+    private readonly IHostEnvironment _hostEnvironment;
 
     public ReviewPredictorService(
         IClientRepository clientRepository,
@@ -23,7 +25,8 @@ public class ReviewPredictorService : IReviewPredictorService
         IContentFeatureRepository featureRepo,
         IClientSummaryRepository summaryRepo,
         ITextGenerationService textGen,
-        ILogger<ReviewPredictorService> logger)
+        ILogger<ReviewPredictorService> logger,
+        IHostEnvironment hostEnvironment)
     {
         _clientRepository = clientRepository;
         _submissionRepo = submissionRepo;
@@ -32,6 +35,7 @@ public class ReviewPredictorService : IReviewPredictorService
         _summaryRepo = summaryRepo;
         _textGen = textGen;
         _logger = logger;
+        _hostEnvironment = hostEnvironment;
     }
 
     /// <summary>
@@ -60,7 +64,9 @@ public class ReviewPredictorService : IReviewPredictorService
         var countsSignature = $"{approved}:{rejected}";
 
         // If existing summary already encodes counts signature, parse and return cached result
-        if (existing != null && existing.SummaryText.Contains($"[counts:{countsSignature}]"))
+        var skipCache = _hostEnvironment.IsDevelopment();
+
+        if (!skipCache && existing != null && existing.SummaryText.Contains($"[counts:{countsSignature}]"))
         {
             _logger.LogInformation("Using cached summary for client {ClientId}", clientId);
             var cached = DeserializeSummary(existing.SummaryText);
