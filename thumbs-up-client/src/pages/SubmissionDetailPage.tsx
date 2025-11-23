@@ -13,11 +13,14 @@ import { useApprovalPrediction } from '../hooks/insights';
 import { MediaFileType } from '../shared/types';
 import { toast } from 'react-toastify';
 import { useAuthStore } from '../stores/authStore';
+import { submissionService } from '../services/submissionService';
 
 export default function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [showFullOcr, setShowFullOcr] = useState(false);
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
   const { user } = useAuthStore();
 
   const { submission, isLoading, isError, error, refetch } = useSubmissionDetail({
@@ -90,6 +93,27 @@ export default function SubmissionDetailPage() {
     if (submission?.accessPassword) {
       navigator.clipboard.writeText(submission.accessPassword);
       toast.success('Password copied to clipboard!');
+    }
+  };
+
+  const handleCopyOcrText = () => {
+    if (submission?.contentFeature?.ocrText) {
+      navigator.clipboard.writeText(submission.contentFeature.ocrText);
+      toast.success('Detected text copied');
+    }
+  };
+
+  const handleReanalyze = async () => {
+    if (!submission) return;
+    setIsReanalyzing(true);
+    try {
+      await submissionService.requestReanalysis(submission.id);
+      toast.success('Reanalysis queued. Refresh in ~30 seconds.');
+    } catch (err) {
+      console.error('Failed to queue reanalysis', err);
+      toast.error('Unable to start reanalysis. Please try again.');
+    } finally {
+      setIsReanalyzing(false);
     }
   };
 
@@ -203,6 +227,129 @@ export default function SubmissionDetailPage() {
                 )}
               </Card>
             )}
+
+            <Card title="Creative Insights">
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  {submission.contentFeature?.extractedAt ? (
+                    <p className="text-xs text-gray-500">
+                      Analyzed {new Date(submission.contentFeature.extractedAt).toLocaleString()}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500">No analysis has run yet.</p>
+                  )}
+                  <Button
+                    size="small"
+                    variant="secondary"
+                    onClick={() => { void handleReanalyze(); }}
+                    loading={isReanalyzing}
+                  >
+                    {isReanalyzing ? 'Reanalyzing…' : 'Re-run analysis'}
+                  </Button>
+                </div>
+
+                {submission.contentFeature ? (
+                  <>
+                    {(() => {
+                      const themeInsights = submission.contentFeature?.themeInsights;
+                      const insightSections = [
+                        { label: 'Subjects', items: themeInsights?.subjects ?? [] },
+                        { label: 'Vibes', items: themeInsights?.vibes ?? [] },
+                        { label: 'Notable elements', items: themeInsights?.notableElements ?? [] },
+                        { label: 'Colors', items: themeInsights?.colors ?? [] },
+                        { label: 'Keywords', items: themeInsights?.keywords ?? [] },
+                      ];
+                      const hasInsightChips = insightSections.some(section => section.items.length > 0);
+                      const chipColors: Record<string, string> = {
+                        Subjects: 'bg-sky-50 text-sky-700',
+                        Vibes: 'bg-violet-50 text-violet-700',
+                        'Notable elements': 'bg-emerald-50 text-emerald-700',
+                        Colors: 'bg-rose-50 text-rose-700',
+                        Keywords: 'bg-amber-50 text-amber-700',
+                      };
+
+                      if (hasInsightChips) {
+                        return (
+                          <div className="space-y-3">
+                            {insightSections.map(section => (
+                              section.items.length > 0 && (
+                                <div key={section.label}>
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                    {section.label}
+                                  </p>
+                                  <div className="mt-1 flex flex-wrap gap-2">
+                                    {section.items.map(item => (
+                                      <span
+                                        key={`${section.label}-${item}`}
+                                        className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium ${chipColors[section.label] ?? 'bg-gray-100 text-gray-700'}`}
+                                      >
+                                        {item}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )
+                            ))}
+                          </div>
+                        );
+                      }
+
+                      if ((submission.contentFeature?.tags || []).length > 0) {
+                        return (
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Themes</p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {submission.contentFeature.tags.map(tag => (
+                                <span key={tag} className="inline-flex items-center rounded-full bg-gray-100 px-3 py-0.5 text-xs font-medium text-gray-700">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return <p className="text-sm text-gray-500">No visual themes detected yet.</p>;
+                    })()}
+
+                    {submission.contentFeature.ocrText && (
+                      <div className="border-t border-gray-100 pt-4">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Detected text
+                          </p>
+                          <div className="flex items-center gap-3 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => setShowFullOcr(prev => !prev)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              {showFullOcr ? 'Show less' : 'Show more'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCopyOcrText}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+                        <p className="mt-2 whitespace-pre-line text-sm text-gray-800">
+                          {showFullOcr || submission.contentFeature.ocrText.length <= 280
+                            ? submission.contentFeature.ocrText
+                            : `${submission.contentFeature.ocrText.slice(0, 280)}…`}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    Insights will populate after the AI pipeline finishes. Trigger another run if the card stays empty.
+                  </p>
+                )}
+              </div>
+            </Card>
 
 
             

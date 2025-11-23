@@ -1,5 +1,8 @@
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using ThumbsUpApi.Configuration;
 using ThumbsUpApi.DTOs;
+using ThumbsUpApi.Models;
 
 namespace ThumbsUpApi.Services;
 
@@ -16,52 +19,89 @@ public class OpenAiThemeService : IImageThemeService
         _logger = logger;
     }
 
-    public async Task<IReadOnlyList<string>> ExtractThemesAsync(string physicalPath, CancellationToken ct = default)
+    private const string StructuredPrompt = "You are a creative director describing marketing visuals. Return STRICT JSON with keys subjects, vibes, notableElements, colors, and keywords (each an array of <=5 short lowercase phrases). No commentary.";
+    private const string FallbackPrompt = "List 5-10 concise lowercase style/theme keywords for this image. Return a comma-separated list only.";
+
+    public async Task<ThemeInsights> ExtractThemesAsync(string physicalPath, CancellationToken ct = default)
     {
         var model = _options.VisionModel ?? _options.TextModel ?? "gpt-4o-mini";
+        byte[]? bytes = null;
 
         try
         {
-            var bytes = await File.ReadAllBytesAsync(physicalPath, ct);
+            bytes = await File.ReadAllBytesAsync(physicalPath, ct);
             var dataUrl = BuildImageDataUrl(bytes, physicalPath);
-            var prompt = "List 3-8 concise lowercase one-word or hyphenated style/theme keywords for this image. Return comma-separated list only.";
-            
-            var request = new OpenAiChatRequest
-            {
-                Model = model,
-                Messages = new[]
-                {
-                    new OpenAiMessage
-                    {
-                        Role = "user",
-                        Content = new OpenAiVisionContent[]
-                        {
-                            new() { Type = "text", Text = prompt },
-                            new() { Type = "image_url", ImageUrl = new OpenAiImageUrl { Url = dataUrl } }
-                        }
-                    }
-                }
-            };
 
-            var payload = await _client.PostAsync<OpenAiChatRequest, OpenAiChatResponse>("chat/completions", request, ct);
-            if (payload == null)
+            var structuredText = await SendVisionRequestAsync(model, dataUrl, StructuredPrompt, ct);
+            var structuredInsights = ThemeInsights.FromModelResponse(structuredText);
+            if (structuredInsights.HasAnyData)
             {
-                return Array.Empty<string>();
+                return structuredInsights;
             }
-            
-            var text = payload.Choices?.FirstOrDefault()?.Message?.GetContentString() ?? string.Empty;
-            var tags = text.Split(new[] { ',', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(t => t.Trim().ToLowerInvariant())
-                .Where(t => t.Length > 0 && t.Length < 40)
-                .Distinct()
-                .ToList();
-            return tags;
+
+            _logger.LogWarning("Structured theme extraction returned empty for {Path}; retrying with fallback prompt", physicalPath);
+            var fallbackText = await SendVisionRequestAsync(model, dataUrl, FallbackPrompt, ct);
+            var fallbackTags = ParseFallbackTags(fallbackText);
+
+            var heuristicInsights = BuildFallbackInsights(bytes, physicalPath);
+
+            if (fallbackTags.Count > 0)
+            {
+                heuristicInsights.Keywords.AddRange(fallbackTags);
+                return ThemeInsights.Combine(new[] { heuristicInsights });
+            }
+
+            if (heuristicInsights.HasAnyData)
+            {
+                return heuristicInsights;
+            }
+
+            _logger.LogWarning("Fallback theme extraction also returned empty for {Path}. Raw response: {ResponseSnippet}", physicalPath, Truncate(fallbackText, 200));
+            return ThemeInsights.Empty;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "OpenAI theme extraction exception for {Path}", physicalPath);
-            return Array.Empty<string>();
+            if (bytes is { Length: > 0 })
+            {
+                var heuristics = BuildFallbackInsights(bytes, physicalPath);
+                if (heuristics.HasAnyData)
+                {
+                    _logger.LogInformation("Fell back to heuristic theme insights for {Path}", physicalPath);
+                    return heuristics;
+                }
+            }
+
+            return ThemeInsights.Empty;
         }
+    }
+
+    private async Task<string> SendVisionRequestAsync(string model, string dataUrl, string prompt, CancellationToken ct)
+    {
+        var request = new OpenAiChatRequest
+        {
+            Model = model,
+            Messages = new[]
+            {
+                new OpenAiMessage { Role = "system", Content = "You respond concisely following the user's instructions exactly." },
+                new OpenAiMessage
+                {
+                    Role = "user",
+                    Content = new OpenAiVisionContent[]
+                    {
+                        new() { Type = "text", Text = prompt },
+                        new() { Type = "image_url", ImageUrl = new OpenAiImageUrl { Url = dataUrl } }
+                    }
+                }
+            }
+        };
+
+        var payload = await _client.PostAsync<OpenAiChatRequest, OpenAiChatResponse>("chat/completions", request, ct);
+        return payload?.Choices?.FirstOrDefault()?.Message?.GetContentString() ?? string.Empty;
     }
 
     private static string BuildImageDataUrl(byte[] bytes, string physicalPath)
@@ -86,5 +126,239 @@ public class OpenAiThemeService : IImageThemeService
             ".avif" => "image/avif",
             _ => "image/png"
         };
+    }
+
+    private static List<string> ParseFallbackTags(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return new List<string>();
+        }
+
+        return text
+            .Split(new[] { ',', '\n', '\r', ';', '|', '/' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(tag => tag.Trim().ToLowerInvariant())
+            .Where(tag => tag.Length > 1 && tag.Length <= 50)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        return value[..maxLength] + "...";
+    }
+
+    private ThemeInsights BuildFallbackInsights(byte[] bytes, string physicalPath)
+    {
+        try
+        {
+            using var image = Image.Load<Rgba32>(bytes);
+            var samples = SamplePixels(image);
+            if (samples.Count == 0)
+            {
+                return ThemeInsights.Empty;
+            }
+
+            var stats = ComputeImageStats(samples, image.Width * image.Height);
+
+            var insights = new ThemeInsights();
+            var aspectRatio = (double)image.Width / image.Height;
+
+            insights.Subjects.Add(aspectRatio switch
+            {
+                > 1.2 => "landscape",
+                < 0.8 => "portrait",
+                _ => "square"
+            });
+
+            insights.Vibes.Add(stats.Brightness switch
+            {
+                >= 0.65 => "bright",
+                <= 0.35 => "moody",
+                _ => "balanced"
+            });
+
+            insights.Vibes.Add(stats.Saturation >= 0.35 ? "vibrant" : "muted");
+
+            foreach (var color in stats.DominantColors)
+            {
+                insights.Colors.Add(color);
+            }
+
+            if (stats.Contrast >= 0.35)
+            {
+                insights.NotableElements.Add("high-contrast");
+            }
+
+            if (stats.Noise >= 0.3)
+            {
+                insights.NotableElements.Add("textured-background");
+            }
+
+            insights.Keywords.Add(stats.Resolution >= 3_000_000 ? "high-res" : "low-res");
+            insights.Keywords.Add(aspectRatio >= 1 ? "wide-framing" : "tall-framing");
+
+            _logger.LogInformation("Generated heuristic theme insights for {Path}", physicalPath);
+            return insights;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate heuristic theme insights for {Path}", physicalPath);
+            return ThemeInsights.Empty;
+        }
+    }
+
+    private static List<Rgba32> SamplePixels(Image<Rgba32> image)
+    {
+        var samples = new List<Rgba32>();
+        var stepX = Math.Max(1, image.Width / 64);
+        var stepY = Math.Max(1, image.Height / 64);
+
+        image.ProcessPixelRows(accessor =>
+        {
+            for (var y = 0; y < accessor.Height; y += stepY)
+            {
+                var row = accessor.GetRowSpan(y);
+                for (var x = 0; x < row.Length; x += stepX)
+                {
+                    samples.Add(row[x]);
+                }
+            }
+        });
+
+        return samples;
+    }
+
+    private static ImageStats ComputeImageStats(List<Rgba32> samples, double resolution)
+    {
+        var brightnessValues = new List<double>(samples.Count);
+        var saturationValues = new List<double>(samples.Count);
+        var colorBuckets = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var sample in samples)
+        {
+            var (h, s, l) = ToHsl(sample);
+            brightnessValues.Add(l);
+            saturationValues.Add(s);
+
+            if (s >= 0.12)
+            {
+                var color = CategorizeColor(h, l);
+                if (!string.IsNullOrEmpty(color))
+                {
+                    colorBuckets.TryGetValue(color, out var count);
+                    colorBuckets[color] = count + 1;
+                }
+            }
+            else
+            {
+                colorBuckets.TryGetValue("neutral", out var neutralCount);
+                colorBuckets["neutral"] = neutralCount + 1;
+            }
+        }
+
+        var dominantColors = colorBuckets
+            .OrderByDescending(kv => kv.Value)
+            .Take(2)
+            .Select(kv => kv.Key)
+            .ToList();
+
+        return new ImageStats
+        {
+            Brightness = brightnessValues.Average(),
+            Saturation = saturationValues.Average(),
+            Contrast = StdDev(brightnessValues),
+            Noise = StdDev(saturationValues),
+            DominantColors = dominantColors,
+            Resolution = resolution
+        };
+    }
+
+    private static (double h, double s, double l) ToHsl(Rgba32 color)
+    {
+        var r = color.R / 255d;
+        var g = color.G / 255d;
+        var b = color.B / 255d;
+
+        var max = Math.Max(r, Math.Max(g, b));
+        var min = Math.Min(r, Math.Min(g, b));
+        var delta = max - min;
+
+        var l = (max + min) / 2d;
+        double h = 0;
+        double s = 0;
+
+        if (delta > 0.0001)
+        {
+            s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+
+            if (Math.Abs(max - r) < double.Epsilon)
+            {
+                h = ((g - b) / delta + (g < b ? 6 : 0)) * 60;
+            }
+            else if (Math.Abs(max - g) < double.Epsilon)
+            {
+                h = ((b - r) / delta + 2) * 60;
+            }
+            else
+            {
+                h = ((r - g) / delta + 4) * 60;
+            }
+        }
+
+        return (h, s, l);
+    }
+
+    private static string CategorizeColor(double hue, double lightness)
+    {
+        if (lightness <= 0.2)
+        {
+            return "deep";
+        }
+
+        if (lightness >= 0.85)
+        {
+            return "airy";
+        }
+
+        return hue switch
+        {
+            < 15 or >= 345 => "red",
+            < 45 => "orange",
+            < 75 => "yellow",
+            < 150 => "green",
+            < 200 => "teal",
+            < 255 => "blue",
+            < 300 => "purple",
+            < 345 => "pink",
+            _ => "neutral"
+        };
+    }
+
+    private static double StdDev(IReadOnlyList<double> values)
+    {
+        if (values.Count == 0)
+        {
+            return 0;
+        }
+
+        var mean = values.Average();
+        var variance = values.Sum(v => Math.Pow(v - mean, 2)) / values.Count;
+        return Math.Sqrt(variance);
+    }
+
+    private sealed class ImageStats
+    {
+        public double Brightness { get; init; }
+        public double Saturation { get; init; }
+        public double Contrast { get; init; }
+        public double Noise { get; init; }
+        public IReadOnlyList<string> DominantColors { get; init; } = Array.Empty<string>();
+        public double Resolution { get; init; }
     }
 }

@@ -36,51 +36,14 @@ public class ImageAnalysisService : IImageAnalysisService
     /// </summary>
     public async Task<ContentFeature?> AnalyzeSubmissionAsync(Guid submissionId, string userId, CancellationToken ct = default)
     {
-        var submission = await _submissionRepo.GetByIdAsync(submissionId, userId);
+        var submission = await _submissionRepo.GetByIdWithIncludesAsync(submissionId, userId);
         if (submission == null)
         {
             _logger.LogWarning("Submission {SubmissionId} not found for analysis", submissionId);
             return null;
         }
 
-        var imageFiles = submission.MediaFiles.Where(m => m.FileType == MediaFileType.Image).ToList();
-        if (imageFiles.Count == 0)
-        {
-            _logger.LogInformation("Submission {SubmissionId} has no image files for analysis", submissionId);
-            return null; // For now skip video analysis
-        }
-
-        var allOcr = new List<string>();
-        var tagSet = new HashSet<string>();
-
-        foreach (var media in imageFiles)
-        {
-            try
-            {
-                var physical = _fileStorage.GetPhysicalPath(media.FilePath);
-                var ocrText = await _ocr.ExtractTextAsync(physical, ct);
-                if (!string.IsNullOrWhiteSpace(ocrText)) allOcr.Add(ocrText.Trim());
-
-                var themes = await _themes.ExtractThemesAsync(physical, ct);
-                foreach (var t in themes) tagSet.Add(t.Trim().ToLowerInvariant());
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error analyzing media {MediaId} for submission {SubmissionId}", media.Id, submissionId);
-            }
-        }
-
-        var feature = new ContentFeature
-        {
-            SubmissionId = submission.Id,
-            OcrText = allOcr.Count == 0 ? null : string.Join("\n", allOcr),
-            ThemeTagsJson = tagSet.Count == 0 ? null : JsonSerializer.Serialize(tagSet.OrderBy(t => t).ToList())
-        };
-
-        var persisted = await _featureRepo.UpsertAsync(feature);
-        await _featureRepo.SaveChangesAsync();
-        _logger.LogInformation("ContentFeature stored for submission {SubmissionId} with {TagCount} tags", submissionId, tagSet.Count);
-        return persisted;
+        return await AnalyzeAndPersistAsync(submission, ct);
     }
 
     /// <summary>
@@ -95,43 +58,89 @@ public class ImageAnalysisService : IImageAnalysisService
             return null;
         }
 
+        return await AnalyzeAndPersistAsync(submission, ct);
+    }
+
+    private async Task<ContentFeature?> AnalyzeAndPersistAsync(Submission submission, CancellationToken ct)
+    {
         var imageFiles = submission.MediaFiles.Where(m => m.FileType == MediaFileType.Image).ToList();
         if (imageFiles.Count == 0)
         {
-            _logger.LogInformation("Submission {SubmissionId} has no image files for analysis", submissionId);
+            _logger.LogInformation("Submission {SubmissionId} has no image files for analysis", submission.Id);
             return null;
         }
 
-        var allOcr = new List<string>();
-        var tagSet = new HashSet<string>();
+        var analysisTasks = imageFiles
+            .Select(media => AnalyzeMediaFileAsync(submission.Id, media, ct))
+            .ToList();
 
-        foreach (var media in imageFiles)
-        {
-            try
-            {
-                var physical = _fileStorage.GetPhysicalPath(media.FilePath);
-                var ocrText = await _ocr.ExtractTextAsync(physical, ct);
-                if (!string.IsNullOrWhiteSpace(ocrText)) allOcr.Add(ocrText.Trim());
+        var results = await Task.WhenAll(analysisTasks);
 
-                var themes = await _themes.ExtractThemesAsync(physical, ct);
-                foreach (var t in themes) tagSet.Add(t.Trim().ToLowerInvariant());
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error analyzing media {MediaId} for submission {SubmissionId}", media.Id, submissionId);
-            }
-        }
+        var ocrTexts = results
+            .Select(r => r.OcrText)
+            .Where(text => !string.IsNullOrWhiteSpace(text))
+            .Select(text => text!.Trim())
+            .ToList();
+
+        var combinedInsights = ThemeInsights.Combine(results.Select(r => r.Insights));
+        var flattenedTags = combinedInsights
+            .FlattenTags()
+            .Select(tag => tag.ToLowerInvariant())
+            .Where(tag => tag.Length > 0 && tag.Length <= 50)
+            .Distinct()
+            .OrderBy(tag => tag)
+            .ToList();
 
         var feature = new ContentFeature
         {
             SubmissionId = submission.Id,
-            OcrText = allOcr.Count == 0 ? null : string.Join("\n", allOcr),
-            ThemeTagsJson = tagSet.Count == 0 ? null : JsonSerializer.Serialize(tagSet.OrderBy(t => t).ToList())
+            OcrText = ocrTexts.Count == 0 ? null : string.Join("\n", ocrTexts),
+            ThemeTagsJson = BuildThemePayload(combinedInsights, flattenedTags)
         };
 
         var persisted = await _featureRepo.UpsertAsync(feature);
         await _featureRepo.SaveChangesAsync();
-        _logger.LogInformation("ContentFeature stored for submission {SubmissionId} with {TagCount} tags", submissionId, tagSet.Count);
+
+        _logger.LogInformation(
+            "ContentFeature stored for submission {SubmissionId} with {TagCount} tags and {OcrCount} OCR segments",
+            submission.Id,
+            flattenedTags.Count,
+            ocrTexts.Count);
+
         return persisted;
     }
+
+    private async Task<MediaAnalysisResult> AnalyzeMediaFileAsync(Guid submissionId, MediaFile media, CancellationToken ct)
+    {
+        var physical = _fileStorage.GetPhysicalPath(media.FilePath);
+
+        try
+        {
+            var ocrTask = _ocr.ExtractTextAsync(physical, ct);
+            var themeTask = _themes.ExtractThemesAsync(physical, ct);
+            await Task.WhenAll(ocrTask, themeTask);
+            return new MediaAnalysisResult(await ocrTask, await themeTask);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing media {MediaId} for submission {SubmissionId}", media.Id, submissionId);
+            return new MediaAnalysisResult(null, ThemeInsights.Empty);
+        }
+    }
+
+    private static string? BuildThemePayload(ThemeInsights insights, IReadOnlyCollection<string> fallbackTags)
+    {
+        if (insights.HasAnyData)
+        {
+            return insights.ToJson();
+        }
+
+        return fallbackTags.Count == 0 ? null : JsonSerializer.Serialize(fallbackTags);
+    }
+
+    private sealed record MediaAnalysisResult(string? OcrText, ThemeInsights Insights);
 }

@@ -37,6 +37,7 @@ public class SubmissionResponse
     public DateTime ExpiresAt { get; set; }
     public List<MediaFileResponse> MediaFiles { get; set; } = new();
     public ReviewResponse? Review { get; set; }
+    public ContentFeatureResponse? ContentFeature { get; set; }
 }
 
 public class MediaFileResponse
@@ -78,4 +79,21 @@ public class ReviewResponse
     public ReviewStatus Status { get; set; }
     public string? Comment { get; set; }
     public DateTime ReviewedAt { get; set; }
+}
+
+public class ContentFeatureResponse
+{
+    public string? OcrText { get; set; }
+    public List<string> Tags { get; set; } = new();
+    public ThemeInsightsResponse? ThemeInsights { get; set; }
+    public DateTime? ExtractedAt { get; set; }
+}
+
+public class ThemeInsightsResponse
+{
+    public List<string> Subjects { get; set; } = new();
+    public List<string> Vibes { get; set; } = new();
+    public List<string> NotableElements { get; set; } = new();
+    public List<string> Colors { get; set; } = new();
+    public List<string> Keywords { get; set; } = new();
 }

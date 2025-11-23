@@ -1,11 +1,11 @@
 using System.Globalization;
 using System.Text;
-using System.Text.Json;
 using ThumbsUpApi.Configuration;
 using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Interfaces;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
+using ThumbsUpApi.Models;
 
 namespace ThumbsUpApi.Services;
 
@@ -93,7 +93,7 @@ public class HybridApprovalPredictor : IApprovalPredictor
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var submissionTerms = BuildSubmissionTerms(tags, submission);
+        var submissionTerms = BuildSubmissionTerms(tags, submission, feature?.OcrText);
         var summary = await _reviewPredictor.GetClientSummaryAsync(clientId, userId, ct);
         var summaryInfluence = summary != null && submissionTerms.Count > 0
             ? CalculateSummaryInfluence(summary, submissionTerms)
@@ -222,16 +222,12 @@ Write the bullets now, starting each line with "- " and never mentioning metadat
 
     private List<string> ParseTags(string? json)
     {
-        if (string.IsNullOrWhiteSpace(json)) return new List<string>();
-        try
-        {
-            var arr = JsonSerializer.Deserialize<List<string>>(json);
-            return arr?.Select(t => t.Trim().ToLowerInvariant()).Where(t => t.Length > 0).Distinct().ToList() ?? new List<string>();
-        }
-        catch
-        {
-            return new List<string>();
-        }
+        return ThemeInsights.FromJson(json)
+            .FlattenTags()
+            .Select(t => t.Trim().ToLowerInvariant())
+            .Where(t => t.Length > 0)
+            .Distinct()
+            .ToList();
     }
 
     private SummaryInfluenceResult CalculateSummaryInfluence(ClientSummaryResponse summary, HashSet<string> submissionTerms)
@@ -286,7 +282,7 @@ Write the bullets now, starting each line with "- " and never mentioning metadat
         return false;
     }
 
-    private static HashSet<string> BuildSubmissionTerms(IEnumerable<string> tags, Submission submission)
+    private static HashSet<string> BuildSubmissionTerms(IEnumerable<string> tags, Submission submission, string? ocrText)
     {
         var terms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var tag in tags)
@@ -308,6 +304,14 @@ Write the bullets now, starting each line with "- " and never mentioning metadat
         if (!string.IsNullOrWhiteSpace(submission.Captions))
         {
             foreach (var token in Tokenize(submission.Captions))
+            {
+                terms.Add(token);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(ocrText))
+        {
+            foreach (var token in Tokenize(ocrText))
             {
                 terms.Add(token);
             }

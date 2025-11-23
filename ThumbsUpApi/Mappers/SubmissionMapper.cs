@@ -29,7 +29,8 @@ public class SubmissionMapper
             CreatedAt = submission.CreatedAt,
             ExpiresAt = submission.ExpiresAt,
             MediaFiles = submission.MediaFiles?.Select(ToMediaFileResponse).ToList() ?? new List<MediaFileResponse>(),
-            Review = submission.Review != null ? ToReviewResponse(submission.Review) : null
+            Review = submission.Review != null ? ToReviewResponse(submission.Review) : null,
+            ContentFeature = submission.ContentFeature != null ? ToContentFeatureResponse(submission.ContentFeature) : null
         };
     }
 
@@ -54,6 +55,43 @@ public class SubmissionMapper
             Status = review.Status,
             Comment = review.Comment,
             ReviewedAt = review.ReviewedAt
+        };
+    }
+
+    private ContentFeatureResponse ToContentFeatureResponse(ContentFeature feature)
+    {
+        var insights = ThemeInsights.FromJson(feature.ThemeTagsJson);
+        var tags = insights
+            .FlattenTags()
+            .Select(tag => tag.Trim())
+            .Where(tag => tag.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(tag => tag)
+            .ToList();
+
+        return new ContentFeatureResponse
+        {
+            OcrText = feature.OcrText,
+            Tags = tags,
+            ThemeInsights = BuildThemeInsightsResponse(insights),
+            ExtractedAt = feature.ExtractedAt
+        };
+    }
+
+    private static ThemeInsightsResponse? BuildThemeInsightsResponse(ThemeInsights insights)
+    {
+        if (!insights.HasAnyData)
+        {
+            return null;
+        }
+
+        return new ThemeInsightsResponse
+        {
+            Subjects = new List<string>(insights.Subjects),
+            Vibes = new List<string>(insights.Vibes),
+            NotableElements = new List<string>(insights.NotableElements),
+            Colors = new List<string>(insights.Colors),
+            Keywords = new List<string>(insights.Keywords)
         };
     }
 }

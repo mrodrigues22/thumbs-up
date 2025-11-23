@@ -232,6 +232,26 @@ public class SubmissionController : ControllerBase
         
         return Ok(_mapper.ToResponse(submission));
     }
+
+    [HttpPost("{id}/reanalyze")]
+    public async Task<IActionResult> ReanalyzeSubmission(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        var submission = await _submissionRepository.GetByIdAsync(id, userId);
+        if (submission == null)
+        {
+            return NotFound();
+        }
+
+        _analysisQueue.Enqueue(id);
+        _logger.LogInformation("Reanalysis queued for submission {SubmissionId} by user {UserId}", id, userId);
+        return Accepted(new { message = "Creative insights refresh queued" });
+    }
     
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteSubmission(Guid id)

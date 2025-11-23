@@ -164,6 +164,7 @@ export interface SubmissionResponse {
   mediaFiles: MediaFileResponse[];
   review?: ReviewResponse;
   createdBy?: string;
+  contentFeature?: ContentFeatureResponse;
 }
 
 export interface CreateSubmissionRequest {
@@ -207,6 +208,21 @@ export interface ApprovalPredictionResponse {
   submissionId: string;
   probability: number;
   rationale: string;
+}
+
+export interface ThemeInsightsResponse {
+  subjects: string[];
+  vibes: string[];
+  notableElements: string[];
+  colors: string[];
+  keywords: string[];
+}
+
+export interface ContentFeatureResponse {
+  ocrText?: string | null;
+  tags: string[];
+  themeInsights?: ThemeInsightsResponse | null;
+  extractedAt?: string | null;
 }
 
 // ===== Filter Types =====

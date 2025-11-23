@@ -310,12 +310,10 @@ public class ReviewPredictorService : IReviewPredictorService
 
     private List<string> DeserializeTags(string? json)
     {
-        if (string.IsNullOrWhiteSpace(json)) return new();
-        try
-        {
-            var list = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
-            return list.Select(t => t.Trim().ToLowerInvariant()).Where(t => t.Length > 0).ToList();
-        }
-        catch { return new(); }
+        return ThemeInsights.FromJson(json)
+            .FlattenTags()
+            .Select(t => t.Trim().ToLowerInvariant())
+            .Where(t => t.Length > 0)
+            .ToList();
     }
 }

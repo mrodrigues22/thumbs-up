@@ -53,4 +53,8 @@ export const submissionService = {
     const response = await api.get<SubmissionResponse[]>(`/client/${clientId}/submissions`);
     return response.data;
   },
+
+  async requestReanalysis(id: string): Promise<void> {
+    await api.post(`/submission/${id}/reanalyze`);
+  },
 };

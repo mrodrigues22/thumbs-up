@@ -24,6 +24,7 @@ public class SubmissionRepository : ISubmissionRepository
         return await _context.Submissions
             .Include(s => s.MediaFiles)
             .Include(s => s.Review)
+            .Include(s => s.ContentFeature)
             .Include(s => s.CreatedBy)
             .Include(s => s.Client)
             .FirstOrDefaultAsync(s => s.Id == id && s.CreatedById == userId);
@@ -33,6 +34,7 @@ public class SubmissionRepository : ISubmissionRepository
     {
         return await _context.Submissions
             .Include(s => s.MediaFiles)
+            .Include(s => s.ContentFeature)
             .FirstOrDefaultAsync(s => s.Id == id);
     }
 
@@ -47,6 +49,7 @@ public class SubmissionRepository : ISubmissionRepository
         return await _context.Submissions
             .Include(s => s.MediaFiles)
             .Include(s => s.Review)
+            .Include(s => s.ContentFeature)
             .Include(s => s.CreatedBy)
             .Include(s => s.Client)
             .Where(s => s.CreatedById == userId)
@@ -67,6 +70,7 @@ public class SubmissionRepository : ISubmissionRepository
         return await _context.Submissions
             .Include(s => s.MediaFiles)
             .Include(s => s.Review)
+            .Include(s => s.ContentFeature)
             .Include(s => s.CreatedBy)
             .Include(s => s.Client)
             .Where(s => s.CreatedById == userId && 
