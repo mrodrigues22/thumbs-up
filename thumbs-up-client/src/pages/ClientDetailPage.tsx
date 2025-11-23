@@ -8,9 +8,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/layout';
 import { clientService } from '../services/clientService';
 import { submissionService } from '../services/submissionService';
+import { aiService } from '../services/aiService';
 import { Button, Card, LoadingSpinner, ErrorMessage, Modal, Input, ImageCropper } from '../components/common';
 import { toast } from 'react-toastify';
-import type { Client, UpdateClientRequest, SubmissionResponse, SubmissionStatus } from '../shared/types';
+import type { Client, UpdateClientRequest, SubmissionResponse, SubmissionStatus, ClientSummaryResponse } from '../shared/types';
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,13 +30,32 @@ export default function ClientDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [clientSummary, setClientSummary] = useState<ClientSummaryResponse | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const summaryAbortRef = useRef<AbortController | null>(null);
+
+  const totalDecisions = clientSummary ? clientSummary.approvedCount + clientSummary.rejectedCount : 0;
+  const approvalRate = clientSummary && totalDecisions > 0
+    ? Math.round((clientSummary.approvedCount / totalDecisions) * 100)
+    : 0;
 
   useEffect(() => {
-    if (id) {
-      loadClient();
-      loadSubmissions();
+    if (!id) {
+      return;
     }
+
+    setClientSummary(null);
+    setSummaryError(null);
+
+    loadClient();
+    loadSubmissions();
+    loadClientSummary();
+
+    return () => {
+      summaryAbortRef.current?.abort();
+    };
   }, [id]);
 
   const loadClient = async () => {
@@ -68,6 +88,40 @@ export default function ClientDetailPage() {
     } catch (err: any) {
     } finally {
       setLoadingSubmissions(false);
+    }
+  };
+
+  const loadClientSummary = async () => {
+    if (!id) {
+      return;
+    }
+
+    summaryAbortRef.current?.abort();
+    const controller = new AbortController();
+    summaryAbortRef.current = controller;
+
+    try {
+      setLoadingSummary(true);
+      setSummaryError(null);
+      const summary = await aiService.getClientSummary(id, controller.signal);
+      if (controller.signal.aborted) {
+        return;
+      }
+      setClientSummary(summary);
+    } catch (err) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      console.error('Error loading AI summary:', err);
+      setSummaryError('Failed to load AI insights. Please try again in a moment.');
+      setClientSummary(null);
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoadingSummary(false);
+      }
+      if (summaryAbortRef.current === controller) {
+        summaryAbortRef.current = null;
+      }
     }
   };
 
@@ -311,6 +365,119 @@ export default function ClientDetailPage() {
             <ErrorMessage error={error} />
           </div>
         )}
+
+        {/* AI Summary Section */}
+        <Card className="mb-6 overflow-hidden border border-primary/30 shadow-xl" padding="none">
+          <div className="bg-gradient-to-r from-primary to-emerald-500 px-6 py-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/80">AI Insights</p>
+              <h2 className="text-2xl font-bold text-white">Client Summary</h2>
+              <p className="text-sm text-white/80">
+                Highlights what resonates (and what does not) for {client.name || client.email}.
+              </p>
+            </div>
+            <Button
+              onClick={() => { void loadClientSummary(); }}
+              variant="ghost"
+              size="small"
+              loading={loadingSummary}
+              className="text-white border border-white/30 hover:bg-white/10 focus:ring-white focus:ring-offset-2"
+            >
+              Refresh Summary
+            </Button>
+          </div>
+          <div className="px-6 py-5 space-y-6 bg-white dark:bg-gray-900">
+            {loadingSummary ? (
+              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                <LoadingSpinner size="small" />
+                <span>Analyzing client history...</span>
+              </div>
+            ) : summaryError ? (
+              <ErrorMessage error={summaryError} onRetry={() => { void loadClientSummary(); }} />
+            ) : clientSummary ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-lg border border-primary/30 bg-primary/5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">Approved</p>
+                    <p className="text-2xl font-bold text-primary mt-2">{clientSummary.approvedCount}</p>
+                  </div>
+                  <div className="p-4 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-red-600">Rejected</p>
+                    <p className="text-2xl font-bold text-red-600 mt-2">{clientSummary.rejectedCount}</p>
+                  </div>
+                  <div className="p-4 rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Win Rate</p>
+                    <p className="text-2xl font-bold text-emerald-600 mt-2">{approvalRate}%</p>
+                  </div>
+                  <div className="p-4 rounded-lg border border-gray-200 bg-gray-50 dark:bg-gray-800">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Decisions Analyzed</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">{totalDecisions}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                  {clientSummary.stylePreferences.length > 0 && (
+                    <div className="rounded-2xl border border-purple-200 bg-purple-50/80 dark:bg-purple-900/20 p-4">
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-purple-700 mb-2">Style Preferences</h3>
+                      <ul className="space-y-1">
+                        {clientSummary.stylePreferences.map((item, idx) => (
+                          <li key={`style-${idx}`} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-100">
+                            <span className="text-purple-500 mt-0.5">•</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {clientSummary.recurringPositives.length > 0 && (
+                    <div className="rounded-2xl border border-green-200 bg-green-50 dark:bg-green-900/20 p-4">
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-green-700 mb-2">Recurring Positives</h3>
+                      <ul className="space-y-1">
+                        {clientSummary.recurringPositives.map((item, idx) => (
+                          <li key={`positive-${idx}`} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-100">
+                            <span className="text-green-500 mt-0.5">✓</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {clientSummary.rejectionReasons.length > 0 && (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 dark:bg-red-900/20 p-4">
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-red-700 mb-2">Common Rejections</h3>
+                      <ul className="space-y-1">
+                        {clientSummary.rejectionReasons.map((item, idx) => (
+                          <li key={`rejection-${idx}`} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-100">
+                            <span className="text-red-500 mt-0.5">✗</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {clientSummary.stylePreferences.length === 0 &&
+                  clientSummary.recurringPositives.length === 0 &&
+                  clientSummary.rejectionReasons.length === 0 && (
+                    <p className="text-sm text-gray-500 dark:text-gray-300">
+                      AI needs a few more submissions to describe this client&apos;s preferences in detail.
+                    </p>
+                  )}
+
+                <p className="text-xs text-gray-400 text-right">
+                  Updated {new Date(clientSummary.generatedAt).toLocaleString()}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-300">
+                Once this client has more approvals or rejections, their AI summary will appear here.
+              </p>
+            )}
+          </div>
+        </Card>
 
         {/* Submissions Section */}
         <Card className="mb-6">
