@@ -382,18 +382,6 @@ public class SubmissionController : ControllerBase
             alignment = "No message provided to assess alignment.";
         }
 
-        // OCR context (shortened)
-        string ocrSnippet = string.Empty;
-        if (!string.IsNullOrWhiteSpace(feature.OcrText))
-        {
-            var trimmed = feature.OcrText.Trim();
-            if (trimmed.Length > 220)
-            {
-                trimmed = trimmed.Substring(0, 220) + "...";
-            }
-            ocrSnippet = $" Extracted text snippet: \"{trimmed}\"";
-        }
-
-        return baseDesc + ". " + alignment + ocrSnippet;
+        return baseDesc + ". " + alignment;
     }
 }
