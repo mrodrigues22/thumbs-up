@@ -84,10 +84,10 @@ public class HybridApprovalPredictor : IApprovalPredictor
         var userPrompt = $"Client Name: {client.Name ?? "(unknown)"}\nClient Approval Rate: {clientApprovalRate:P0}\nSubmission Tags: {string.Join(", ", tags)}\nTag Matches With Prior Approved Content: {matchScore}\nPredicted Probability: {probability:P0}\nProvide 2-3 bullet points rationale, referencing style or themes.";
 
         // If no text model configured, return static rationale
-        var textModel = _configuration["Ai:Ollama:TextModel"];
-        if (string.IsNullOrWhiteSpace(textModel))
+        var openAiModel = _configuration["Ai:OpenAi:Model"] ?? Environment.GetEnvironmentVariable("OPENAI_MODEL");
+        if (string.IsNullOrWhiteSpace(openAiModel))
         {
-            return $"Predicted approval {probability:P0}. Matches: {matchScore}. (No LLM rationale configured.)";
+            return $"Predicted approval {probability:P0}. Matches: {matchScore}. (No GPT model configured.)";
         }
 
         var result = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);

@@ -55,6 +55,9 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// HttpClient factory for OpenAI services
+builder.Services.AddHttpClient();
+
 // Add HttpContextAccessor for accessing request information
 builder.Services.AddHttpContextAccessor();
 
@@ -74,10 +77,10 @@ builder.Services.AddScoped<ThumbsUpApi.Mappers.ReviewMapper>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IImageCompressionService, ImageCompressionService>();
-// AI services (swappable via configuration)
-builder.Services.AddScoped<ThumbsUpApi.Services.IImageOcrService, ThumbsUpApi.Services.Florence2OnnxService>();
-builder.Services.AddScoped<ThumbsUpApi.Services.IImageThemeService, ThumbsUpApi.Services.MoondreamThemeService>();
-builder.Services.AddScoped<ThumbsUpApi.Services.ITextGenerationService, ThumbsUpApi.Services.LlamaTextService>();
+// AI services (GPT-based implementations only)
+builder.Services.AddScoped<ThumbsUpApi.Services.IImageOcrService, ThumbsUpApi.Services.OpenAiOcrService>();
+builder.Services.AddScoped<ThumbsUpApi.Services.IImageThemeService, ThumbsUpApi.Services.OpenAiThemeService>();
+builder.Services.AddScoped<ThumbsUpApi.Services.ITextGenerationService, ThumbsUpApi.Services.OpenAiTextService>();
 builder.Services.AddScoped<ThumbsUpApi.Services.IApprovalPredictor, ThumbsUpApi.Services.HybridApprovalPredictor>();
 builder.Services.AddScoped<ThumbsUpApi.Services.ImageAnalysisService>();
 builder.Services.AddScoped<ThumbsUpApi.Services.ReviewPredictorService>();

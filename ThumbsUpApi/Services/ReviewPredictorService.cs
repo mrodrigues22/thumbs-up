@@ -65,8 +65,7 @@ public class ReviewPredictorService
 
         var systemPrompt = "You summarize a client's stylistic and preference tendencies from structured data only.";
         var userPrompt = $"ClientName: {client.Name ?? client.Email}\nApprovedCount: {approved}\nRejectedCount: {rejected}\nTopTags: {string.Join(",", tagFreq.Select(t => t.Tag + ":" + t.Count))}\nRecentComments: {string.Join(" || ", comments.Take(10))}\nProvide: bullet points for style, recurring positives, common rejection reasons. Return under 120 words.";
-        Console.WriteLine(systemPrompt);
-        Console.WriteLine(userPrompt);
+        
         string summaryText;
         try
         {
