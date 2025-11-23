@@ -10,4 +10,16 @@ public sealed class AiPredictorOptions
     /// </summary>
     [Range(0.0, 1.0, ErrorMessage = "TagWeight must be between 0.0 and 1.0")]
     public double TagWeight { get; set; } = 0.05;
+
+    /// <summary>
+    /// Weight applied when a submission aligns with documented client summary highlights.
+    /// </summary>
+    [Range(0.0, 1.0, ErrorMessage = "SummaryAlignmentWeight must be between 0.0 and 1.0")]
+    public double SummaryAlignmentWeight { get; set; } = 0.04;
+
+    /// <summary>
+    /// Weight applied as a penalty when a submission touches on known rejection triggers.
+    /// </summary>
+    [Range(0.0, 1.0, ErrorMessage = "SummaryPenaltyWeight must be between 0.0 and 1.0")]
+    public double SummaryPenaltyWeight { get; set; } = 0.06;
 }

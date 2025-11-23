@@ -1,5 +1,9 @@
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using ThumbsUpApi.Configuration;
+using ThumbsUpApi.DTOs;
+using ThumbsUpApi.Interfaces;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
 
@@ -7,9 +11,21 @@ namespace ThumbsUpApi.Services;
 
 public class HybridApprovalPredictor : IApprovalPredictor
 {
+    private static readonly char[] TokenDelimiters = new[] { ' ', ',', '.', ';', ':', '!', '?', '/', '\\', '-', '_', '|', '\n', '\r', '\t' };
+    private static readonly char[] TrimChars = new[] { '.', ',', ';', ':', '!', '?', '"', '\'', '(', ')', '[', ']', '{', '}' };
+    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "and", "the", "with", "for", "this", "that", "from", "into", "your", "their", "about", "over",
+        "some", "more", "than", "very", "much", "also", "just", "when", "after", "before", "were", "been",
+        "them", "they", "you", "our", "any", "but", "are", "was", "has", "have", "had", "will", "would",
+        "could", "should", "onto", "while", "there", "here"
+    };
+    private static readonly TextInfo TitleCase = CultureInfo.InvariantCulture.TextInfo;
+
     private readonly IContentFeatureRepository _featureRepo;
     private readonly ISubmissionRepository _submissionRepo;
     private readonly IReviewRepository _reviewRepo;
+    private readonly IReviewPredictorService _reviewPredictor;
     private readonly ITextGenerationService _textGen;
     private readonly ILogger<HybridApprovalPredictor> _logger;
     private readonly AiOptions _aiOptions;
@@ -19,6 +35,7 @@ public class HybridApprovalPredictor : IApprovalPredictor
         IContentFeatureRepository featureRepo,
         ISubmissionRepository submissionRepo,
         IReviewRepository reviewRepo,
+        IReviewPredictorService reviewPredictor,
         ITextGenerationService textGen,
         ILogger<HybridApprovalPredictor> logger,
         Microsoft.Extensions.Options.IOptions<AiOptions> aiOptions,
@@ -27,6 +44,7 @@ public class HybridApprovalPredictor : IApprovalPredictor
         _featureRepo = featureRepo;
         _submissionRepo = submissionRepo;
         _reviewRepo = reviewRepo;
+        _reviewPredictor = reviewPredictor;
         _textGen = textGen;
         _logger = logger;
         _aiOptions = aiOptions.Value;
@@ -51,10 +69,9 @@ public class HybridApprovalPredictor : IApprovalPredictor
         double clientApprovalRate = totalClientReviews > 0 ? (double)approvedCount / totalClientReviews : 0.5; // neutral prior
         double globalApprovalRate = globalTotal > 0 ? (double)globalApproved / globalTotal : 0.5;
 
-        // Tag matching boost
+        // Theme matching boost
         var feature = submission.ContentFeature ?? await _featureRepo.GetBySubmissionIdAsync(submissionId);
         var tags = ParseTags(feature?.ThemeTagsJson);
-        // Compute frequent tags from client's approved submissions
         var clientSubmissionIds = await _submissionRepo.GetByClientIdAsync(clientId, userId);
         var approvedIds = clientSubmissionIds
             .SelectMany(s => s.Review != null && s.Review.Status == ReviewStatus.Approved ? new[] { s.Id } : Array.Empty<Guid>())
@@ -70,46 +87,137 @@ public class HybridApprovalPredictor : IApprovalPredictor
 
         int matchScore = tags.Count(t => freq.ContainsKey(t));
         double tagBoost = matchScore * _predictorOptions.TagWeight;
+        var friendlyThemes = tags
+            .Select(ToFriendlyTheme)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        // Simple logistic scoring
-        double score = (clientApprovalRate - (1 - globalApprovalRate)) + tagBoost; // combine relative tendencies + tag match
-        // clamp
+        var submissionTerms = BuildSubmissionTerms(tags, submission);
+        var summary = await _reviewPredictor.GetClientSummaryAsync(clientId, userId, ct);
+        var summaryInfluence = summary != null && submissionTerms.Count > 0
+            ? CalculateSummaryInfluence(summary, submissionTerms)
+            : new SummaryInfluenceResult();
+
+        // Simple logistic scoring with summary boost
+        double score = (clientApprovalRate - (1 - globalApprovalRate)) + tagBoost + summaryInfluence.Boost;
         score = Math.Clamp(score, -2.0, 2.0);
         double probability = 1.0 / (1.0 + Math.Exp(-score));
 
         // LLM rationale (optional if model configured)
-        string rationale = await BuildRationaleAsync(client, submission, tags, clientApprovalRate, probability, matchScore, ct);
+        string rationale = await BuildRationaleAsync(
+            client,
+            submission,
+            friendlyThemes,
+            clientApprovalRate,
+            probability,
+            matchScore,
+            summary,
+            summaryInfluence,
+            ct);
 
         return (probability, rationale);
     }
 
-    private async Task<string> BuildRationaleAsync(Client client, Submission submission, List<string> tags, double clientApprovalRate, double probability, int matchScore, CancellationToken ct)
+    private async Task<string> BuildRationaleAsync(
+        Client client,
+        Submission submission,
+        List<string> friendlyThemes,
+        double clientApprovalRate,
+        double probability,
+        int alignedThemeCount,
+        ClientSummaryResponse? summary,
+        SummaryInfluenceResult summaryInfluence,
+        CancellationToken ct)
     {
-        var systemPrompt = "You are an assistant that explains predicted client approval likelihood for a content submission succinctly.";
-        var userPrompt = $"Client Name: {client.Name ?? "(unknown)"}\nClient Approval Rate: {clientApprovalRate:P0}\nSubmission Tags: {string.Join(", ", tags)}\nTag Matches With Prior Approved Content: {matchScore}\nPredicted Probability: {probability:P0}\nProvide 2-3 bullet points rationale, referencing style or themes.";
+        var systemPrompt = "You advise account managers on how likely a client is to approve new creative. " +
+            "Respond with 2-3 short bullet points (max 20 words each). Keep the tone plain, avoid jargon like tags or metadata, " +
+            "and reference the client's documented preferences when it helps.";
 
-        // If no text model configured, return static rationale
+        var submissionNarrative = Truncate(BuildSubmissionNarrative(submission), 320);
+        var userPrompt = $"""
+Client Name: {client.Name ?? "(unknown)"}
+Historical Approval Rate: {clientApprovalRate:P0}
+Submission Themes: {CollapseList(friendlyThemes, "No extracted themes")}
+Submission Notes: {submissionNarrative}
+Documented Style Preferences: {CollapseList(summary?.StylePreferences, "No documented style preferences")}
+Recurring Positives: {CollapseList(summary?.RecurringPositives, "No recurring positives yet")}
+Rejection Reasons: {CollapseList(summary?.RejectionReasons, "No rejection reasons recorded")}
+Matched Client Themes Count: {alignedThemeCount}
+Aligned Summary Signals: {CollapseList(summaryInfluence.PositiveSignals, "None detected for this submission")}
+Potential Risks: {CollapseList(summaryInfluence.RiskSignals, "No specific risks detected")}
+Predicted Probability: {probability:P0}
+
+Write the bullets now, starting each line with "- " and never mentioning metadata or scoring formulas.
+""";
+
         var openAiModel = _aiOptions.TextModel ?? Environment.GetEnvironmentVariable("OPENAI_MODEL");
         if (string.IsNullOrWhiteSpace(openAiModel))
         {
-            return $"Predicted approval {probability:P0}. Matches: {matchScore}. (No GPT model configured.)";
+            return BuildFallbackRationale(probability, clientApprovalRate, friendlyThemes, summary, summaryInfluence, alignedThemeCount);
         }
 
         try
         {
             var result = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
-            return string.IsNullOrWhiteSpace(result) ? $"Predicted approval {probability:P0}. Matches: {matchScore}." : result.Trim();
+            if (string.IsNullOrWhiteSpace(result))
+            {
+                return BuildFallbackRationale(probability, clientApprovalRate, friendlyThemes, summary, summaryInfluence, alignedThemeCount);
+            }
+            return result.Trim();
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("API key"))
         {
-            // Propagate configuration errors to controller
             throw;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to generate AI rationale for submission {SubmissionId}", submission.Id);
-            return $"Predicted approval {probability:P0}. Matches: {matchScore}. (AI rationale unavailable)";
+            return BuildFallbackRationale(probability, clientApprovalRate, friendlyThemes, summary, summaryInfluence, alignedThemeCount);
         }
+    }
+
+    private string BuildFallbackRationale(
+        double probability,
+        double clientApprovalRate,
+        List<string> friendlyThemes,
+        ClientSummaryResponse? summary,
+        SummaryInfluenceResult influence,
+        int alignedThemeCount)
+    {
+        var bullets = new List<string>
+        {
+            $"Approval likelihood is {probability:P0}, in line with their {clientApprovalRate:P0} history."
+        };
+
+        if (alignedThemeCount > 0)
+        {
+            bullets.Add($"It mirrors {alignedThemeCount} themes they have approved recently.");
+        }
+        else if (friendlyThemes.Count > 0)
+        {
+            bullets.Add($"Themes in play: {string.Join(", ", friendlyThemes.Take(3))}.");
+        }
+
+        if (influence.PositiveSignals.Count > 0)
+        {
+            bullets.Add($"Helps: {string.Join("; ", influence.PositiveSignals.Take(2))}.");
+        }
+        else if (summary?.StylePreferences?.Any() == true)
+        {
+            bullets.Add($"They respond well to {string.Join("; ", summary.StylePreferences.Take(2))}.");
+        }
+
+        if (influence.RiskSignals.Count > 0)
+        {
+            bullets.Add($"Watch-outs: {string.Join("; ", influence.RiskSignals.Take(2))}.");
+        }
+        else if (summary?.RejectionReasons?.Any() == true)
+        {
+            bullets.Add($"Avoid {summary.RejectionReasons.First()}.");
+        }
+
+        return string.Join("\n", bullets.Select(b => $"- {b}"));
     }
 
     private List<string> ParseTags(string? json)
@@ -124,5 +232,167 @@ public class HybridApprovalPredictor : IApprovalPredictor
         {
             return new List<string>();
         }
+    }
+
+    private SummaryInfluenceResult CalculateSummaryInfluence(ClientSummaryResponse summary, HashSet<string> submissionTerms)
+    {
+        if (submissionTerms.Count == 0)
+        {
+            return new SummaryInfluenceResult();
+        }
+
+        var positiveMatches = CaptureMatches(Enumerate(summary.StylePreferences).Concat(Enumerate(summary.RecurringPositives)), submissionTerms);
+        var riskMatches = CaptureMatches(Enumerate(summary.RejectionReasons), submissionTerms);
+
+        double boost = positiveMatches.Count * _predictorOptions.SummaryAlignmentWeight;
+        double penalty = riskMatches.Count * _predictorOptions.SummaryPenaltyWeight;
+
+        return new SummaryInfluenceResult
+        {
+            Boost = boost - penalty,
+            PositiveSignals = positiveMatches.Take(3).ToList(),
+            RiskSignals = riskMatches.Take(3).ToList()
+        };
+    }
+
+    private static List<string> CaptureMatches(IEnumerable<string>? phrases, HashSet<string> submissionTerms)
+    {
+        if (phrases == null)
+        {
+            return new List<string>();
+        }
+
+        var matches = new List<string>();
+        foreach (var phrase in phrases)
+        {
+            if (string.IsNullOrWhiteSpace(phrase)) continue;
+            if (PhraseMatchesSubmission(phrase, submissionTerms))
+            {
+                matches.Add(phrase.Trim());
+            }
+        }
+        return matches;
+    }
+
+    private static bool PhraseMatchesSubmission(string phrase, HashSet<string> submissionTerms)
+    {
+        foreach (var token in Tokenize(phrase))
+        {
+            if (submissionTerms.Contains(token))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static HashSet<string> BuildSubmissionTerms(IEnumerable<string> tags, Submission submission)
+    {
+        var terms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var tag in tags)
+        {
+            foreach (var token in Tokenize(tag))
+            {
+                terms.Add(token);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(submission.Message))
+        {
+            foreach (var token in Tokenize(submission.Message))
+            {
+                terms.Add(token);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(submission.Captions))
+        {
+            foreach (var token in Tokenize(submission.Captions))
+            {
+                terms.Add(token);
+            }
+        }
+
+        return terms;
+    }
+
+    private static IEnumerable<string> Tokenize(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) yield break;
+
+        var tokens = text.ToLowerInvariant().Split(TokenDelimiters, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var token in tokens)
+        {
+            var cleaned = token.Trim(TrimChars);
+            if (cleaned.Length <= 2) continue;
+            if (StopWords.Contains(cleaned)) continue;
+            yield return cleaned;
+        }
+    }
+
+    private static string BuildSubmissionNarrative(Submission submission)
+    {
+        var builder = new StringBuilder();
+        if (!string.IsNullOrWhiteSpace(submission.Message))
+        {
+            builder.Append(submission.Message.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(submission.Captions))
+        {
+            if (builder.Length > 0)
+            {
+                builder.Append(' ');
+            }
+            builder.Append(submission.Captions.Trim());
+        }
+
+        return builder.Length == 0 ? "No additional notes provided." : builder.ToString();
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        if (value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        return value[..maxLength] + "...";
+    }
+
+    private static string CollapseList(IEnumerable<string>? items, string fallback)
+    {
+        if (items == null)
+        {
+            return fallback;
+        }
+
+        var list = items.Where(i => !string.IsNullOrWhiteSpace(i)).Select(i => i.Trim()).ToList();
+        return list.Count == 0 ? fallback : string.Join(" | ", list);
+    }
+
+    private static IEnumerable<string> Enumerate(IEnumerable<string>? source) => source ?? Array.Empty<string>();
+
+    private static string ToFriendlyTheme(string rawTheme)
+    {
+        if (string.IsNullOrWhiteSpace(rawTheme))
+        {
+            return string.Empty;
+        }
+
+        var cleaned = rawTheme.Replace('_', ' ').Replace('-', ' ').Trim();
+        if (cleaned.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        return TitleCase.ToTitleCase(cleaned);
+    }
+
+    private sealed class SummaryInfluenceResult
+    {
+        public double Boost { get; init; }
+        public List<string> PositiveSignals { get; init; } = new();
+        public List<string> RiskSignals { get; init; } = new();
     }
 }
