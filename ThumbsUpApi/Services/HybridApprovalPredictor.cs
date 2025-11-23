@@ -36,7 +36,7 @@ public class HybridApprovalPredictor : IApprovalPredictor
     public async Task<(double probability, string rationale)> PredictApprovalAsync(Guid clientId, Guid submissionId, string userId, CancellationToken ct = default)
     {
         // Fetch data with user permission check
-        var submission = await _submissionRepo.GetByIdAsync(submissionId, userId);
+        var submission = await _submissionRepo.GetByIdWithIncludesAsync(submissionId, userId);
         var client = submission?.Client;
         if (client == null || submission == null)
         {
