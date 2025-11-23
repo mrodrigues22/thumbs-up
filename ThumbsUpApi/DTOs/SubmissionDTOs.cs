@@ -38,6 +38,7 @@ public class SubmissionResponse
     public List<MediaFileResponse> MediaFiles { get; set; } = new();
     public ReviewResponse? Review { get; set; }
     public ContentFeatureResponse? ContentFeature { get; set; }
+    public string? ContentSummary { get; set; }
 }
 
 public class MediaFileResponse
