@@ -6,6 +6,7 @@ using ThumbsUpApi.Models;
 using ThumbsUpApi.Services;
 using ThumbsUpApi.Repositories;
 using ThumbsUpApi.Mappers;
+using ThumbsUpApi.Interfaces;
 
 namespace ThumbsUpApi.Controllers;
 
@@ -22,6 +23,7 @@ public class SubmissionController : ControllerBase
     private readonly ILogger<SubmissionController> _logger;
     private readonly SubmissionMapper _mapper;
     private readonly ThumbsUpApi.Services.ISubmissionAnalysisQueue _analysisQueue;
+    private readonly IContentSummaryService _contentSummaryService;
     
     public SubmissionController(
         ISubmissionRepository submissionRepository,
@@ -31,7 +33,8 @@ public class SubmissionController : ControllerBase
         IConfiguration configuration,
         ILogger<SubmissionController> logger,
         SubmissionMapper mapper,
-        ThumbsUpApi.Services.ISubmissionAnalysisQueue analysisQueue)
+        ThumbsUpApi.Services.ISubmissionAnalysisQueue analysisQueue,
+        IContentSummaryService contentSummaryService)
     {
         _submissionRepository = submissionRepository;
         _clientRepository = clientRepository;
@@ -41,6 +44,7 @@ public class SubmissionController : ControllerBase
         _logger = logger;
         _mapper = mapper;
         _analysisQueue = analysisQueue;
+        _contentSummaryService = contentSummaryService;
     }
     
     [HttpPost]
@@ -202,7 +206,7 @@ public class SubmissionController : ControllerBase
         
         var response = _mapper.ToResponse(submission);
         response.AccessPassword = accessPassword;
-        response.ContentSummary = BuildContentSummary(response);
+        response.ContentSummary = await _contentSummaryService.GenerateAsync(response);
         
         return Ok(response);
     }
@@ -231,7 +235,7 @@ public class SubmissionController : ControllerBase
         if (submission == null)
             return NotFound();
         var response = _mapper.ToResponse(submission);
-        response.ContentSummary = BuildContentSummary(response);
+        response.ContentSummary = await _contentSummaryService.GenerateAsync(response);
         return Ok(response);
     }
 
@@ -300,88 +304,4 @@ public class SubmissionController : ControllerBase
             .Select(s => s[random.Next(s.Length)]).ToArray());
     }
 
-    private string BuildContentSummary(SubmissionResponse submission)
-    {
-        if (submission.MediaFiles == null || submission.MediaFiles.Count == 0)
-        {
-            return "No media files were attached.";
-        }
-
-        var feature = submission.ContentFeature;
-        if (feature == null || feature.AnalysisStatus == null || feature.AnalysisStatus == ContentFeatureStatus.Pending)
-        {
-            return "Content analysis pending. Media uploaded and awaiting processing.";
-        }
-
-        var subjects = feature.ThemeInsights?.Subjects ?? new List<string>();
-        var vibes = feature.ThemeInsights?.Vibes ?? new List<string>();
-        var notable = feature.ThemeInsights?.NotableElements ?? new List<string>();
-        var colors = feature.ThemeInsights?.Colors ?? new List<string>();
-        var keywords = feature.ThemeInsights?.Keywords ?? new List<string>();
-        var tags = feature.Tags ?? new List<string>();
-
-        var mediaKind = submission.MediaFiles.All(m => m.FileType == MediaFileType.Image) ? "image" : "media";
-        var count = submission.MediaFiles.Count;
-
-        string baseDesc = $"This {mediaKind} submission contains {count} {(count == 1 ? mediaKind : mediaKind + "s")}";
-
-        if (subjects.Count > 0)
-        {
-            baseDesc += $" featuring {string.Join(", ", subjects.Take(5))}";
-        }
-
-        if (notable.Count > 0)
-        {
-            baseDesc += $". Notable elements include {string.Join(", ", notable.Take(5))}";
-        }
-
-        if (colors.Count > 0)
-        {
-            baseDesc += $". Dominant colors: {string.Join(", ", colors.Take(7))}";
-        }
-
-        if (vibes.Count > 0)
-        {
-            baseDesc += $". Overall vibe: {string.Join(", ", vibes.Take(5))}";
-        }
-
-        // Alignment analysis with client expectations (using message if provided)
-        var message = submission.Message;
-        string alignment;
-        if (!string.IsNullOrWhiteSpace(message))
-        {
-            var messageTokens = message
-                .ToLowerInvariant()
-                .Split(new[] { ' ', '\n', '\r', '\t', ',', '.', ';', ':', '!' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(t => t.Trim())
-                .Where(t => t.Length > 2)
-                .Distinct()
-                .ToHashSet();
-
-            var conceptTokens = subjects
-                .Concat(vibes)
-                .Concat(notable)
-                .Concat(colors)
-                .Concat(keywords)
-                .Concat(tags)
-                .Select(s => s.ToLowerInvariant())
-                .ToHashSet();
-
-            var overlap = messageTokens.Intersect(conceptTokens).Take(10).ToList();
-            if (overlap.Count > 0)
-            {
-                alignment = $"The visuals align with the stated message through concepts such as: {string.Join(", ", overlap)}.";
-            }
-            else
-            {
-                alignment = "The current visual themes only partially reflect the stated message; consider reinforcing key terms or adding supporting elements.";
-            }
-        }
-        else
-        {
-            alignment = "No message provided to assess alignment.";
-        }
-
-        return baseDesc + ". " + alignment;
-    }
 }

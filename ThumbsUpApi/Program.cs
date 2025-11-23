@@ -10,6 +10,7 @@ using System.Threading.RateLimiting;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Services;
 using ThumbsUpApi.Configuration;
+using ThumbsUpApi.Interfaces;
 using Polly;
 using Polly.Extensions.Http;
 
@@ -116,6 +117,18 @@ builder.Services.AddScoped<ThumbsUpApi.Services.IApprovalPredictor, ThumbsUpApi.
 // Orchestration services with interfaces
 builder.Services.AddScoped<ThumbsUpApi.Interfaces.IImageAnalysisService, ThumbsUpApi.Services.ImageAnalysisService>();
 builder.Services.AddScoped<ThumbsUpApi.Interfaces.IReviewPredictorService, ThumbsUpApi.Services.ReviewPredictorService>();
+
+// Content Summary service (conditional AI enhancement)
+builder.Services.AddScoped<RuleBasedContentSummaryService>();
+if (builder.Configuration.GetValue<bool>("Submission:EnableAiSummary", true))
+{
+    builder.Services.AddScoped<IContentSummaryService, AiContentSummaryService>();
+}
+else
+{
+    builder.Services.AddScoped<IContentSummaryService, RuleBasedContentSummaryService>();
+}
+
 // Queue and background worker
 builder.Services.AddSingleton<ThumbsUpApi.Services.ISubmissionAnalysisQueue, ThumbsUpApi.Services.SubmissionAnalysisQueue>();
 builder.Services.AddHostedService<ThumbsUpApi.Services.AiProcessingWorker>();
