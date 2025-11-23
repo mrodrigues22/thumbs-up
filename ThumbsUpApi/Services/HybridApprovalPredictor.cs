@@ -5,7 +5,6 @@ using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Interfaces;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
-using ThumbsUpApi.Models;
 
 namespace ThumbsUpApi.Services;
 

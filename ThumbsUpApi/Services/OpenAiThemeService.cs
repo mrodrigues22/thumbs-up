@@ -32,15 +32,12 @@ public class OpenAiThemeService : IImageThemeService
         {
             imageBytes = await File.ReadAllBytesAsync(physicalPath, ct);
 
-            if (_options.UseResponsesApi)
-            {
-                await using var stream = new MemoryStream(imageBytes, writable: false);
-                var upload = await _client.UploadFileAsync(stream, Path.GetFileName(physicalPath), "vision", ct)
-                             ?? throw new InvalidOperationException("OpenAI returned no payload for file upload");
-                fileId = upload.Id;
-            }
+            await using var stream = new MemoryStream(imageBytes, writable: false);
+            var upload = await _client.UploadFileAsync(stream, Path.GetFileName(physicalPath), "vision", ct)
+                         ?? throw new InvalidOperationException("OpenAI returned no payload for file upload");
+            fileId = upload.Id;
 
-            var structuredText = await SendVisionRequestAsync(model, StructuredPrompt, physicalPath, fileId, imageBytes, ct);
+            var structuredText = await SendVisionRequestAsync(model, StructuredPrompt, fileId, ct);
             var structuredInsights = ThemeInsights.FromModelResponse(structuredText);
             if (structuredInsights.HasAnyData)
             {
@@ -48,7 +45,7 @@ public class OpenAiThemeService : IImageThemeService
             }
 
             _logger.LogWarning("Structured theme extraction returned empty for {Path}; retrying with fallback prompt", physicalPath);
-            var fallbackText = await SendVisionRequestAsync(model, FallbackPrompt, physicalPath, fileId, imageBytes, ct);
+            var fallbackText = await SendVisionRequestAsync(model, FallbackPrompt, fileId, ct);
             var fallbackTags = ParseFallbackTags(fallbackText);
 
             var heuristicInsights = BuildFallbackInsights(imageBytes, physicalPath);
@@ -92,86 +89,37 @@ public class OpenAiThemeService : IImageThemeService
         }
     }
 
-    private async Task<string> SendVisionRequestAsync(string model, string prompt, string physicalPath, string? fileId, byte[] imageBytes, CancellationToken ct)
+    private async Task<string> SendVisionRequestAsync(string model, string prompt, string? fileId, CancellationToken ct)
     {
-        if (_options.UseResponsesApi)
+        if (string.IsNullOrWhiteSpace(fileId))
         {
-            if (string.IsNullOrWhiteSpace(fileId))
-            {
-                throw new InvalidOperationException("Vision file reference missing for responses call.");
-            }
-
-            var request = new OpenAiResponseRequest
-            {
-                Model = model,
-                Input = new[]
-                {
-                    new OpenAiResponseMessage
-                    {
-                        Role = "user",
-                        Content = new[]
-                        {
-                            new OpenAiResponseContent { Type = "input_text", Text = prompt },
-                            new OpenAiResponseContent { Type = "input_image", ImageFile = new OpenAiResponseImageFile { FileId = fileId } }
-                        }
-                    }
-                }
-            };
-
-            var payload = await _client.PostResponsesAsync<OpenAiResponseRequest, OpenAiResponsePayload>(request, ct);
-            return payload?.GetFirstTextOutput() ?? string.Empty;
+            throw new InvalidOperationException("Vision file reference missing for responses call.");
         }
 
-        var dataUrl = BuildImageDataUrl(imageBytes, Path.GetExtension(physicalPath));
-        var chatRequest = new OpenAiChatRequest
+        var request = new OpenAiResponseRequest
         {
             Model = model,
-            Messages = new[]
+            Input = new[]
             {
-                new OpenAiMessage { Role = "system", Content = "You respond concisely following the user's instructions exactly." },
-                new OpenAiMessage
+                new OpenAiResponseMessage
                 {
                     Role = "user",
-                    Content = new OpenAiVisionContent[]
+                    Content = new[]
                     {
-                        new() { Type = "text", Text = prompt },
-                        new() { Type = "image_url", ImageUrl = new OpenAiImageUrl { Url = dataUrl } }
+                        new OpenAiResponseContent { Type = "input_text", Text = prompt },
+                        new OpenAiResponseContent { Type = "input_image", ImageFile = new OpenAiResponseImageFile { FileId = fileId } }
                     }
                 }
             }
         };
 
-        var chatPayload = await _client.PostAsync<OpenAiChatRequest, OpenAiChatResponse>("chat/completions", chatRequest, ct);
-        return chatPayload?.Choices?.FirstOrDefault()?.Message?.GetContentString() ?? string.Empty;
-    }
-
-    private static string BuildImageDataUrl(byte[] bytes, string extension)
-    {
-        var base64 = Convert.ToBase64String(bytes);
-        var mimeType = GetMimeType(extension);
-        return $"data:{mimeType};base64,{base64}";
-    }
-
-    private static string GetMimeType(string extension)
-    {
-        return extension.ToLowerInvariant() switch
-        {
-            ".jpg" or ".jpeg" => "image/jpeg",
-            ".gif" => "image/gif",
-            ".bmp" => "image/bmp",
-            ".webp" => "image/webp",
-            ".svg" => "image/svg+xml",
-            ".heic" => "image/heic",
-            ".heif" => "image/heif",
-            ".tif" or ".tiff" => "image/tiff",
-            ".avif" => "image/avif",
-            _ => "image/png"
-        };
+        var payload = await _client.PostResponsesAsync<OpenAiResponseRequest, OpenAiResponsePayload>(request, ct);
+        return payload?.GetFirstTextOutput() ?? string.Empty;
     }
 
     private async Task DeleteUploadedFileAsync(string? fileId)
     {
-        if (!_options.UseResponsesApi || string.IsNullOrWhiteSpace(fileId))
+        if (string.IsNullOrWhiteSpace(fileId))
         {
             return;
         }

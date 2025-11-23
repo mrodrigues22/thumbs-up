@@ -19,9 +19,7 @@ public class OpenAiOcrService : IImageOcrService
     public async Task<string?> ExtractTextAsync(string physicalPath, CancellationToken ct = default)
     {
         var model = _options.VisionModel ?? _options.TextModel ?? "gpt-4o-mini";
-        return _options.UseResponsesApi
-            ? await ExtractWithResponsesAsync(model, physicalPath, ct)
-            : await ExtractWithChatAsync(model, physicalPath, ct);
+        return await ExtractWithResponsesAsync(model, physicalPath, ct);
     }
 
     private async Task<string?> ExtractWithResponsesAsync(string model, string physicalPath, CancellationToken ct)
@@ -67,66 +65,6 @@ public class OpenAiOcrService : IImageOcrService
         {
             await DeleteUploadedFileAsync(fileId);
         }
-    }
-
-    private async Task<string?> ExtractWithChatAsync(string model, string physicalPath, CancellationToken ct)
-    {
-        try
-        {
-            var dataUrl = await BuildImageDataUrlAsync(physicalPath, ct);
-            var prompt = "You are an OCR engine. Return ONLY all visible text from the image in reading order. No commentary.";
-
-            var request = new OpenAiChatRequest
-            {
-                Model = model,
-                Messages = new[]
-                {
-                    new OpenAiMessage
-                    {
-                        Role = "user",
-                        Content = new OpenAiVisionContent[]
-                        {
-                            new() { Type = "text", Text = prompt },
-                            new() { Type = "image_url", ImageUrl = new OpenAiImageUrl { Url = dataUrl } }
-                        }
-                    }
-                }
-            };
-
-            var payload = await _client.PostAsync<OpenAiChatRequest, OpenAiChatResponse>("chat/completions", request, ct);
-            var content = payload?.Choices?.FirstOrDefault()?.Message?.GetContentString();
-            return string.IsNullOrWhiteSpace(content) ? null : content.Trim();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "OpenAI OCR exception in chat fallback");
-            throw;
-        }
-    }
-
-    private static async Task<string> BuildImageDataUrlAsync(string physicalPath, CancellationToken ct)
-    {
-        var bytes = await File.ReadAllBytesAsync(physicalPath, ct);
-        var base64 = Convert.ToBase64String(bytes);
-        var mimeType = GetMimeType(Path.GetExtension(physicalPath));
-        return $"data:{mimeType};base64,{base64}";
-    }
-
-    private static string GetMimeType(string extension)
-    {
-        return extension.ToLowerInvariant() switch
-        {
-            ".jpg" or ".jpeg" => "image/jpeg",
-            ".gif" => "image/gif",
-            ".bmp" => "image/bmp",
-            ".webp" => "image/webp",
-            ".svg" => "image/svg+xml",
-            ".heic" => "image/heic",
-            ".heif" => "image/heif",
-            ".tif" or ".tiff" => "image/tiff",
-            ".avif" => "image/avif",
-            _ => "image/png"
-        };
     }
 
     private async Task DeleteUploadedFileAsync(string? fileId)

@@ -31,9 +31,6 @@ public sealed class OpenAiResponseContent
     [JsonPropertyName("text")]
     public string? Text { get; set; }
     
-    [JsonPropertyName("image_url")]
-    public OpenAiImageUrl? ImageUrl { get; set; }
-    
     [JsonPropertyName("image_file")]
     public OpenAiResponseImageFile? ImageFile { get; set; }
 }

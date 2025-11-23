@@ -8,7 +8,6 @@ namespace ThumbsUpApi.Services;
 
 public interface IOpenAiClient
 {
-    Task<TResponse?> PostAsync<TRequest, TResponse>(string path, TRequest request, CancellationToken ct = default);
     Task<TResponse?> PostResponsesAsync<TRequest, TResponse>(TRequest request, CancellationToken ct = default);
     Task<OpenAiFileUploadResponse?> UploadFileAsync(Stream fileStream, string fileName, string purpose, CancellationToken ct = default);
     Task DeleteFileAsync(string fileId, CancellationToken ct = default);
@@ -26,9 +25,6 @@ public sealed class OpenAiClient : IOpenAiClient
         _options = options.Value;
         _logger = logger;
     }
-
-    public async Task<TResponse?> PostAsync<TRequest, TResponse>(string path, TRequest request, CancellationToken ct = default)
-        => await SendJsonAsync<TRequest, TResponse>(path, request, ct);
 
     public async Task<TResponse?> PostResponsesAsync<TRequest, TResponse>(TRequest request, CancellationToken ct = default)
         => await SendJsonAsync<TRequest, TResponse>("responses", request, ct);

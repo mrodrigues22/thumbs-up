@@ -15,8 +15,4 @@ public sealed class AiOptions
     [Required(ErrorMessage = "Vision model is required")]
     public string VisionModel { get; set; } = "gpt-4o-mini";
 
-    /// <summary>
-    /// Toggle to control whether the application uses the /v1/responses endpoint (recommended) or falls back to chat/completions.
-    /// </summary>
-    public bool UseResponsesApi { get; set; } = true;
 }

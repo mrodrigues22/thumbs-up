@@ -19,9 +19,7 @@ public class OpenAiTextService : ITextGenerationService
     public async Task<string> GenerateAsync(string systemPrompt, string userPrompt, CancellationToken ct = default)
     {
         var model = _options.TextModel ?? _options.VisionModel ?? "gpt-4o-mini";
-        return _options.UseResponsesApi
-            ? await GenerateViaResponsesAsync(model, systemPrompt, userPrompt, ct)
-            : await GenerateViaChatAsync(model, systemPrompt, userPrompt, ct);
+        return await GenerateViaResponsesAsync(model, systemPrompt, userPrompt, ct);
     }
 
     private async Task<string> GenerateViaResponsesAsync(string model, string systemPrompt, string userPrompt, CancellationToken ct)
@@ -56,36 +54,7 @@ public class OpenAiTextService : ITextGenerationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OpenAI text generation exception for model {Model} (responses)", model);
-            return string.Empty;
-        }
-    }
-
-    private async Task<string> GenerateViaChatAsync(string model, string systemPrompt, string userPrompt, CancellationToken ct)
-    {
-        try
-        {
-            var request = new OpenAiChatRequest
-            {
-                Model = model,
-                Messages = new[]
-                {
-                    new OpenAiMessage { Role = "system", Content = systemPrompt },
-                    new OpenAiMessage { Role = "user", Content = userPrompt }
-                }
-            };
-
-            var payload = await _client.PostAsync<OpenAiChatRequest, OpenAiChatResponse>("chat/completions", request, ct);
-            var content = payload?.Choices?.FirstOrDefault()?.Message?.GetContentString();
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                _logger.LogWarning("OpenAI returned empty content. Model: {Model}, ChoicesCount: {Count}", model, payload?.Choices?.Length ?? 0);
-            }
-            return content?.Trim() ?? string.Empty;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "OpenAI text generation exception for model {Model} (chat)", model);
+            _logger.LogError(ex, "OpenAI text generation exception for model {Model}", model);
             return string.Empty;
         }
     }
