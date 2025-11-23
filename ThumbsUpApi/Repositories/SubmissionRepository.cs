@@ -41,7 +41,7 @@ public class SubmissionRepository : ISubmissionRepository
     public async Task<Submission?> GetByTokenAsync(string token)
     {
         return await _context.Submissions
-            .FirstOrDefaultAsync(s => s.AccessToken == token);
+            .FirstOrDefaultAsync(s => s.AccessToken.ToLower() == token.ToLower());
     }
 
     public async Task<IEnumerable<Submission>> GetAllByUserIdAsync(string userId)
