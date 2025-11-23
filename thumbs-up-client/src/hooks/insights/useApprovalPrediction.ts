@@ -3,6 +3,14 @@ import { insightsService } from '../../services/insightsService';
 import type { ApprovalPredictionResponse, ApiError } from '../../shared/types';
 import { formatApiError } from '../../shared/api';
 
+const isAbortError = (err: unknown) => {
+  if (typeof err !== 'object' || err === null) {
+    return false;
+  }
+  const name = (err as { name?: string }).name;
+  return name === 'CanceledError' || name === 'AbortError';
+};
+
 interface UseApprovalPredictionOptions {
   clientId?: string;
   submissionId?: string;
@@ -36,7 +44,8 @@ export const useApprovalPrediction = (
       return;
     }
 
-    let cancelled = false;
+    let isSubscribed = true;
+    const controller = new AbortController();
 
     const fetchPrediction = async () => {
       setIsLoading(true);
@@ -47,12 +56,15 @@ export const useApprovalPrediction = (
         const data = await insightsService.predictApproval({
           clientId,
           submissionId,
-        } as { clientId: string; submissionId: string });
-        if (!cancelled) {
+        } as { clientId: string; submissionId: string }, controller.signal);
+        if (isSubscribed) {
           setPrediction(data);
         }
       } catch (err) {
-        if (!cancelled) {
+        if (!isSubscribed || controller.signal.aborted || isAbortError(err)) {
+          return;
+        }
+        if (isSubscribed) {
           setIsError(true);
           setError({
             message: formatApiError(err),
@@ -60,7 +72,7 @@ export const useApprovalPrediction = (
           });
         }
       } finally {
-        if (!cancelled) {
+        if (isSubscribed && !controller.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -69,7 +81,8 @@ export const useApprovalPrediction = (
     fetchPrediction();
 
     return () => {
-      cancelled = true;
+      isSubscribed = false;
+      controller.abort();
     };
   }, [clientId, submissionId, enabled]);
 

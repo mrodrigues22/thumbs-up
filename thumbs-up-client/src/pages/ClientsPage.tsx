@@ -3,7 +3,7 @@
  * Manage client contacts with full CRUD operations
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Layout } from '../components/layout';
 import { clientService } from '../services/clientService';
 import { aiService } from '../services/aiService';
@@ -28,6 +28,7 @@ export default function ClientsPage() {
     companyName: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const summaryAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     loadClients();
@@ -47,18 +48,39 @@ export default function ClientsPage() {
     }
   };
 
+  useEffect(() => {
+    return () => {
+      summaryAbortRef.current?.abort();
+    };
+  }, []);
+
   const loadClientSummary = async (client: Client) => {
+    summaryAbortRef.current?.abort();
+    const controller = new AbortController();
+    summaryAbortRef.current = controller;
+
     try {
       setAiLoading(true);
       setAiError(null);
-      const summary = await aiService.getClientSummary(client.id);
+      const summary = await aiService.getClientSummary(client.id, controller.signal);
+      if (controller.signal.aborted) {
+        return;
+      }
       setAiSummary(summary);
     } catch (err) {
+      if (controller.signal.aborted) {
+        return;
+      }
       console.error('Error loading AI summary:', err);
       setAiError('Failed to load AI summary.');
       setAiSummary(null);
     } finally {
-      setAiLoading(false);
+      if (!controller.signal.aborted) {
+        setAiLoading(false);
+      }
+      if (summaryAbortRef.current === controller) {
+        summaryAbortRef.current = null;
+      }
     }
   };
 
