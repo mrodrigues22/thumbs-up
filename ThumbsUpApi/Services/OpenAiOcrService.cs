@@ -16,14 +16,12 @@ public class OpenAiOcrService : IImageOcrService
         _logger = logger;
     }
 
-    public async Task<string?> ExtractTextAsync(string physicalPath, CancellationToken ct = default)
+    public async Task<string?> ExtractTextAsync(string base64Image, CancellationToken ct = default)
     {
         var model = _options.VisionModel ?? _options.TextModel ?? "gpt-5-mini";
 
         try
         {
-            var bytes = await File.ReadAllBytesAsync(physicalPath, ct);
-            var base64 = Convert.ToBase64String(bytes);
             var prompt = "You are an OCR engine. Return ONLY all visible text from the image in reading order. No commentary.";
             
             var request = new OpenAiChatRequest
@@ -37,7 +35,7 @@ public class OpenAiOcrService : IImageOcrService
                         Content = new OpenAiVisionContent[]
                         {
                             new() { Type = "text", Text = prompt },
-                            new() { Type = "image_url", ImageUrl = new OpenAiImageUrl { Url = $"data:image/png;base64,{base64}" } }
+                            new() { Type = "image_url", ImageUrl = new OpenAiImageUrl { Url = $"data:image/png;base64,{base64Image}" } }
                         }
                     }
                 }
@@ -54,7 +52,7 @@ public class OpenAiOcrService : IImageOcrService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OpenAI OCR exception for {Path}", physicalPath);
+            _logger.LogError(ex, "OpenAI OCR exception");
             return null;
         }
     }

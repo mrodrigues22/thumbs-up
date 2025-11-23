@@ -35,15 +35,20 @@ public class OpenAiTextService : ITextGenerationService
             var payload = await _client.PostAsync<OpenAiChatRequest, OpenAiChatResponse>("chat/completions", request, ct);
             if (payload == null)
             {
+                _logger.LogWarning("OpenAI returned null payload for text generation");
                 return string.Empty;
             }
 
             var content = payload.Choices?.FirstOrDefault()?.Message?.GetContentString();
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                _logger.LogWarning("OpenAI returned empty content. Model: {Model}, ChoicesCount: {Count}", model, payload.Choices?.Length ?? 0);
+            }
             return content?.Trim() ?? string.Empty;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OpenAI text generation exception");
+            _logger.LogError(ex, "OpenAI text generation exception for model {Model}", model);
             return string.Empty;
         }
     }

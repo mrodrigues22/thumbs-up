@@ -148,7 +148,19 @@ public class ReviewPredictorService : IReviewPredictorService
         try
         {
             var response = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
-            return ParseJsonArrayResponse(response) ?? new List<string> { "Unable to determine style preferences" };
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogWarning("Empty response from AI for style preferences. Client: {ClientId}", client.Id);
+                return new List<string> { "Unable to determine style preferences" };
+            }
+            
+            var parsed = ParseJsonArrayResponse(response);
+            if (parsed == null)
+            {
+                _logger.LogWarning("Failed to parse style preferences response. Response: {Response}", response.Substring(0, Math.Min(500, response.Length)));
+                return new List<string> { "Unable to determine style preferences" };
+            }
+            return parsed;
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("API key"))
         {
@@ -177,7 +189,19 @@ public class ReviewPredictorService : IReviewPredictorService
         try
         {
             var response = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
-            return ParseJsonArrayResponse(response) ?? new List<string> { "Unable to determine recurring positives" };
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogWarning("Empty response from AI for recurring positives. Client: {ClientId}", client.Id);
+                return new List<string> { "Unable to determine recurring positives" };
+            }
+            
+            var parsed = ParseJsonArrayResponse(response);
+            if (parsed == null)
+            {
+                _logger.LogWarning("Failed to parse recurring positives response. Response: {Response}", response.Substring(0, Math.Min(500, response.Length)));
+                return new List<string> { "Unable to determine recurring positives" };
+            }
+            return parsed;
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("API key"))
         {
@@ -205,7 +229,19 @@ public class ReviewPredictorService : IReviewPredictorService
         try
         {
             var response = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
-            return ParseJsonArrayResponse(response) ?? new List<string> { "Unable to determine rejection reasons" };
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogWarning("Empty response from AI for rejection reasons. Client: {ClientId}", client.Id);
+                return new List<string> { "Unable to determine rejection reasons" };
+            }
+            
+            var parsed = ParseJsonArrayResponse(response);
+            if (parsed == null)
+            {
+                _logger.LogWarning("Failed to parse rejection reasons response. Response: {Response}", response.Substring(0, Math.Min(500, response.Length)));
+                return new List<string> { "Unable to determine rejection reasons" };
+            }
+            return parsed;
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("API key"))
         {
