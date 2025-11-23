@@ -55,7 +55,7 @@ public class HybridApprovalPredictor : IApprovalPredictor
         var feature = submission.ContentFeature ?? await _featureRepo.GetBySubmissionIdAsync(submissionId);
         var tags = ParseTags(feature?.ThemeTagsJson);
         // Compute frequent tags from client's approved submissions
-        var clientSubmissionIds = await _submissionRepo.GetByClientIdAsync(clientId, userId: string.Empty);
+        var clientSubmissionIds = await _submissionRepo.GetByClientIdAsync(clientId, userId);
         var approvedIds = clientSubmissionIds
             .SelectMany(s => s.Review != null && s.Review.Status == ReviewStatus.Approved ? new[] { s.Id } : Array.Empty<Guid>())
             .ToHashSet();
