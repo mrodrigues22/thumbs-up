@@ -41,11 +41,12 @@ public sealed class OpenAiResponseContent
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Text { get; set; }
 
-    // Updated to match Responses API vision input: provide a direct file id
-    // Example payload part: { "type": "input_image", "image_file_id": "file-abc123" }
-    [JsonPropertyName("image_file_id")]
+    // Vision input (Responses API): image_url is a STRING containing a valid URL or data URI.
+    // Example: { "type": "input_image", "image_url": "https://example.com/image.png" }
+    // Or: { "type": "input_image", "image_url": "data:image/png;base64,...." }
+    [JsonPropertyName("image_url")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? ImageFileId { get; set; }
+    public string? ImageUrl { get; set; }
 }
 
 public sealed class OpenAiResponsePayload

@@ -25,16 +25,10 @@ public class OpenAiOcrService : IImageOcrService
     private async Task<string?> ExtractWithResponsesAsync(string model, string physicalPath, CancellationToken ct)
     {
         const string prompt = "You are an OCR engine. Return ONLY all visible text from the image in reading order. No commentary.";
-        string? fileId = null;
 
         try
         {
-            await using (var stream = File.OpenRead(physicalPath))
-            {
-                var upload = await _client.UploadFileAsync(stream, Path.GetFileName(physicalPath), "vision", ct)
-                             ?? throw new InvalidOperationException("OpenAI returned no payload for file upload");
-                fileId = upload.Id;
-            }
+            var dataUri = BuildImageDataUri(physicalPath);
 
             var request = new OpenAiResponseRequest
             {
@@ -47,7 +41,7 @@ public class OpenAiOcrService : IImageOcrService
                         Content = new[]
                         {
                             new OpenAiResponseContent { Type = "input_text", Text = prompt },
-                            new OpenAiResponseContent { Type = "input_image", ImageFileId = fileId! }
+                            new OpenAiResponseContent { Type = "input_image", ImageUrl = dataUri }
                         }
                     }
                 }
@@ -61,26 +55,20 @@ public class OpenAiOcrService : IImageOcrService
             _logger.LogError(ex, "OpenAI OCR exception");
             throw;
         }
-        finally
-        {
-            await DeleteUploadedFileAsync(fileId);
-        }
     }
 
-    private async Task DeleteUploadedFileAsync(string? fileId)
+    private static string BuildImageDataUri(string physicalPath)
     {
-        if (string.IsNullOrWhiteSpace(fileId))
+        var bytes = File.ReadAllBytes(physicalPath);
+        var ext = Path.GetExtension(physicalPath).ToLowerInvariant() switch
         {
-            return;
-        }
-
-        try
-        {
-            await _client.DeleteFileAsync(fileId, CancellationToken.None);
-        }
-        catch (Exception cleanupEx)
-        {
-            _logger.LogWarning(cleanupEx, "Failed to delete temporary OpenAI file {FileId}", fileId);
-        }
+            ".jpg" or ".jpeg" => "jpeg",
+            ".png" => "png",
+            ".gif" => "gif",
+            ".webp" => "webp",
+            _ => "png"
+        };
+        var base64 = Convert.ToBase64String(bytes);
+        return $"data:image/{ext};base64,{base64}";
     }
 }

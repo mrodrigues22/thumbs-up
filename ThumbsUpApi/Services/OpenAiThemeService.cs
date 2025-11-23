@@ -26,18 +26,13 @@ public class OpenAiThemeService : IImageThemeService
     {
         var model = _options.VisionModel ?? _options.TextModel ?? "gpt-4o-mini";
         byte[] imageBytes = Array.Empty<byte>();
-        string? fileId = null;
 
         try
         {
             imageBytes = await File.ReadAllBytesAsync(physicalPath, ct);
+            var dataUri = BuildImageDataUri(physicalPath, imageBytes);
 
-            await using var stream = new MemoryStream(imageBytes, writable: false);
-            var upload = await _client.UploadFileAsync(stream, Path.GetFileName(physicalPath), "vision", ct)
-                         ?? throw new InvalidOperationException("OpenAI returned no payload for file upload");
-            fileId = upload.Id;
-
-            var structuredText = await SendVisionRequestAsync(model, StructuredPrompt, fileId, ct);
+            var structuredText = await SendVisionRequestAsync(model, StructuredPrompt, dataUri, ct);
             var structuredInsights = ThemeInsights.FromModelResponse(structuredText);
             if (structuredInsights.HasAnyData)
             {
@@ -45,7 +40,7 @@ public class OpenAiThemeService : IImageThemeService
             }
 
             _logger.LogWarning("Structured theme extraction returned empty for {Path}; retrying with fallback prompt", physicalPath);
-            var fallbackText = await SendVisionRequestAsync(model, FallbackPrompt, fileId, ct);
+            var fallbackText = await SendVisionRequestAsync(model, FallbackPrompt, dataUri, ct);
             var fallbackTags = ParseFallbackTags(fallbackText);
 
             var heuristicInsights = BuildFallbackInsights(imageBytes, physicalPath);
@@ -83,19 +78,10 @@ public class OpenAiThemeService : IImageThemeService
 
             return ThemeInsights.Empty;
         }
-        finally
-        {
-            await DeleteUploadedFileAsync(fileId);
-        }
     }
 
-    private async Task<string> SendVisionRequestAsync(string model, string prompt, string? fileId, CancellationToken ct)
+    private async Task<string> SendVisionRequestAsync(string model, string prompt, string dataUri, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(fileId))
-        {
-            throw new InvalidOperationException("Vision file reference missing for responses call.");
-        }
-
         var request = new OpenAiResponseRequest
         {
             Model = model,
@@ -107,7 +93,7 @@ public class OpenAiThemeService : IImageThemeService
                     Content = new[]
                     {
                         new OpenAiResponseContent { Type = "input_text", Text = prompt },
-                        new OpenAiResponseContent { Type = "input_image", ImageFileId = fileId }
+                        new OpenAiResponseContent { Type = "input_image", ImageUrl = dataUri }
                     }
                 }
             }
@@ -117,21 +103,18 @@ public class OpenAiThemeService : IImageThemeService
         return payload?.GetFirstTextOutput() ?? string.Empty;
     }
 
-    private async Task DeleteUploadedFileAsync(string? fileId)
+    private static string BuildImageDataUri(string physicalPath, byte[] bytes)
     {
-        if (string.IsNullOrWhiteSpace(fileId))
+        var ext = Path.GetExtension(physicalPath).ToLowerInvariant() switch
         {
-            return;
-        }
-
-        try
-        {
-            await _client.DeleteFileAsync(fileId, CancellationToken.None);
-        }
-        catch (Exception cleanupEx)
-        {
-            _logger.LogWarning(cleanupEx, "Failed to delete temporary OpenAI file {FileId}", fileId);
-        }
+            ".jpg" or ".jpeg" => "jpeg",
+            ".png" => "png",
+            ".gif" => "gif",
+            ".webp" => "webp",
+            _ => "png"
+        };
+        var base64 = Convert.ToBase64String(bytes);
+        return $"data:image/{ext};base64,{base64}";
     }
 
     private static List<string> ParseFallbackTags(string text)

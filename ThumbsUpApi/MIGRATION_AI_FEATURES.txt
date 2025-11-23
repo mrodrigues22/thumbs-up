@@ -17,3 +17,5 @@ OpenAI Responses API Update (Nov 2025):
 - Code updated in `DTOs/OpenAiResponseDTOs.cs` and `Services/OpenAiTextService.cs`.
 - If you previously pinned an older SDK, ensure it supports the new structure or adjust manually.
 - Rebuild containers (`docker-compose up --build`) after pulling this change.
+ - Vision image parameter corrected: use `image_url` (with uploaded file id) instead of deprecated/invalid `image_file_id`.
+	 Update applied in `DTOs/OpenAiResponseDTOs.cs`, `OpenAiOcrService.cs`, and `OpenAiThemeService.cs`.
