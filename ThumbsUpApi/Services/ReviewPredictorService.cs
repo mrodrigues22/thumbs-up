@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Interfaces;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
@@ -34,9 +35,10 @@ public class ReviewPredictorService : IReviewPredictorService
     }
 
     /// <summary>
-    /// Gets or rebuilds a cached client summary. Rebuild conditions: no summary exists OR approved/rejected review count changed.
+    /// Gets or rebuilds a cached client summary with separate AI-generated insights.
+    /// Rebuild conditions: no summary exists OR approved/rejected review count changed.
     /// </summary>
-    public async Task<ClientSummary?> GetOrRefreshSummaryAsync(Guid clientId, string userId, CancellationToken ct = default)
+    public async Task<ClientSummaryResponse?> GetClientSummaryAsync(Guid clientId, string userId, CancellationToken ct = default)
     {
         var client = await _clientRepository.GetByIdAsync(clientId, userId);
         if (client == null)
@@ -57,50 +59,59 @@ public class ReviewPredictorService : IReviewPredictorService
         var existing = await _summaryRepo.GetByClientIdAsync(clientId);
         var countsSignature = $"{approved}:{rejected}";
 
-        // If existing summary already encodes counts signature (simple heuristic) skip regeneration.
+        // If existing summary already encodes counts signature, parse and return cached result
         if (existing != null && existing.SummaryText.Contains($"[counts:{countsSignature}]"))
         {
-            return existing;
+            _logger.LogInformation("Using cached summary for client {ClientId}", clientId);
+            var cached = DeserializeSummary(existing.SummaryText);
+            if (cached != null)
+            {
+                cached.ClientId = clientId;
+                cached.ApprovedCount = approved;
+                cached.RejectedCount = rejected;
+                cached.GeneratedAt = existing.UpdatedAt;
+                return cached;
+            }
         }
-        // Collect tags from approved content features
+        
+        // Collect data for AI generation
         var approvedIds = reviews.Where(r => r.Status == ReviewStatus.Approved)
             .Select(r => r.SubmissionId)
             .ToHashSet();
+        var rejectedIds = reviews.Where(r => r.Status == ReviewStatus.Rejected)
+            .Select(r => r.SubmissionId)
+            .ToHashSet();
 
-        var features = (await _featureRepo.GetBySubmissionIdsAsync(approvedIds, ct)).ToList();
+        var features = (await _featureRepo.GetBySubmissionIdsAsync(approvedIds.Union(rejectedIds).ToHashSet(), ct)).ToList();
 
-        var tagFreq = features.SelectMany(f => DeserializeTags(f.ThemeTagsJson))
+        var approvedTags = features.Where(f => approvedIds.Contains(f.SubmissionId))
+            .SelectMany(f => DeserializeTags(f.ThemeTagsJson))
             .GroupBy(t => t)
             .OrderByDescending(g => g.Count())
-            .Take(15)
-            .Select(g => new { Tag = g.Key, Count = g.Count() })
+            .Take(10)
+            .Select(g => (dynamic)new { Tag = g.Key, Count = g.Count() })
             .ToList();
 
-        var comments = reviews.Where(r => !string.IsNullOrWhiteSpace(r.Comment)).Select(r => r.Comment!.Trim()).ToList();
+        var approvedComments = reviews.Where(r => r.Status == ReviewStatus.Approved && !string.IsNullOrWhiteSpace(r.Comment))
+            .Select(r => r.Comment!.Trim())
+            .ToList();
+        var rejectedComments = reviews.Where(r => r.Status == ReviewStatus.Rejected && !string.IsNullOrWhiteSpace(r.Comment))
+            .Select(r => r.Comment!.Trim())
+            .ToList();
 
-        var systemPrompt = "You summarize a client's stylistic and preference tendencies from structured data only. Always use clear section headers followed by bullet points. Even with limited data, always include all three sections.";
-        var userPrompt = $"ClientName: {client.Name ?? client.Email}\nApprovedCount: {approved}\nRejectedCount: {rejected}\nTopTags: {string.Join(",", tagFreq.Select(t => t.Tag + ":" + t.Count))}\nRecentComments: {string.Join(" || ", comments.Take(10))}\n\nFormat your response with these three sections (even if some are minimal due to limited data):\n\nStyle Preferences:\n- [bullet points or 'Insufficient data yet']\n\nRecurring Positives:\n- [bullet points or 'Insufficient data yet']\n\nRejection Reasons:\n- [bullet points or 'No rejections yet']\n\nKeep under 120 words total. Always include all three section headers.";
-        
-        string summaryText;
-        try
-        {
-            summaryText = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating client summary for {ClientId}", clientId);
-            summaryText = "Summary generation failed.";
-        }
+        // Generate each insight field separately with focused prompts
+        var stylePreferences = await GenerateStylePreferencesAsync(client, approvedTags, approvedComments, ct);
+        var recurringPositives = await GenerateRecurringPositivesAsync(client, approvedTags, approvedComments, ct);
+        var rejectionReasons = await GenerateRejectionReasonsAsync(client, rejectedComments, ct);
 
-        // Ensure we never persist an effectively empty summary, which would
-        // be stripped down to an empty string by the API layer.
-        if (string.IsNullOrWhiteSpace(summaryText))
+        // Serialize and cache
+        var summaryData = new
         {
-            summaryText = "No meaningful review data is available yet to summarize.";
-        }
-
-        // Embed counts signature for change detection
-        summaryText = summaryText.Trim() + $"\n[counts:{countsSignature}]";
+            stylePreferences,
+            recurringPositives,
+            rejectionReasons
+        };
+        var summaryText = JsonSerializer.Serialize(summaryData) + $"\n[counts:{countsSignature}]";
 
         var newSummary = new ClientSummary
         {
@@ -109,7 +120,135 @@ public class ReviewPredictorService : IReviewPredictorService
         };
         var persisted = await _summaryRepo.UpsertAsync(newSummary);
         await _summaryRepo.SaveChangesAsync();
-        return persisted;
+
+        return new ClientSummaryResponse
+        {
+            ClientId = clientId,
+            StylePreferences = stylePreferences,
+            RecurringPositives = recurringPositives,
+            RejectionReasons = rejectionReasons,
+            ApprovedCount = approved,
+            RejectedCount = rejected,
+            GeneratedAt = persisted.UpdatedAt
+        };
+    }
+
+    private async Task<List<string>> GenerateStylePreferencesAsync(
+        Client client, 
+        List<dynamic> approvedTags, 
+        List<string> approvedComments, 
+        CancellationToken ct)
+    {
+        if (approvedTags.Count == 0 && approvedComments.Count == 0)
+            return new List<string> { "Insufficient data yet" };
+
+        var systemPrompt = "You identify a client's style preferences from their approved content. Return ONLY a JSON array of 3-5 concise bullet points (strings). Each point should describe a style preference or tendency.";
+        var userPrompt = $"Client: {client.Name ?? client.Email}\nApproved Tags: {string.Join(", ", approvedTags.Select(t => $"{t.Tag}({t.Count})"))}\nApproved Comments: {string.Join(" | ", approvedComments.Take(8))}\n\nIdentify their style preferences as a JSON array of strings.";
+        
+        try
+        {
+            var response = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
+            return ParseJsonArrayResponse(response) ?? new List<string> { "Unable to determine style preferences" };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating style preferences for {ClientId}", client.Id);
+            return new List<string> { "Error analyzing style preferences" };
+        }
+    }
+
+    private async Task<List<string>> GenerateRecurringPositivesAsync(
+        Client client, 
+        List<dynamic> approvedTags, 
+        List<string> approvedComments, 
+        CancellationToken ct)
+    {
+        if (approvedTags.Count == 0 && approvedComments.Count == 0)
+            return new List<string> { "Insufficient data yet" };
+
+        var systemPrompt = "You identify recurring positive patterns in approved content. Return ONLY a JSON array of 3-5 concise bullet points (strings). Focus on what consistently works well.";
+        var userPrompt = $"Client: {client.Name ?? client.Email}\nApproved Tags: {string.Join(", ", approvedTags.Select(t => $"{t.Tag}({t.Count})"))}\nApproved Comments: {string.Join(" | ", approvedComments.Take(8))}\n\nIdentify recurring positive patterns as a JSON array of strings.";
+        
+        try
+        {
+            var response = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
+            return ParseJsonArrayResponse(response) ?? new List<string> { "Unable to determine recurring positives" };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating recurring positives for {ClientId}", client.Id);
+            return new List<string> { "Error analyzing positive patterns" };
+        }
+    }
+
+    private async Task<List<string>> GenerateRejectionReasonsAsync(
+        Client client, 
+        List<string> rejectedComments, 
+        CancellationToken ct)
+    {
+        if (rejectedComments.Count == 0)
+            return new List<string> { "No rejections yet" };
+
+        var systemPrompt = "You identify common rejection reasons from rejected content comments. Return ONLY a JSON array of 3-5 concise bullet points (strings). Focus on why content gets rejected.";
+        var userPrompt = $"Client: {client.Name ?? client.Email}\nRejected Comments: {string.Join(" | ", rejectedComments.Take(10))}\n\nIdentify common rejection reasons as a JSON array of strings.";
+        
+        try
+        {
+            var response = await _textGen.GenerateAsync(systemPrompt, userPrompt, ct);
+            return ParseJsonArrayResponse(response) ?? new List<string> { "Unable to determine rejection reasons" };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating rejection reasons for {ClientId}", client.Id);
+            return new List<string> { "Error analyzing rejection reasons" };
+        }
+    }
+
+    private List<string>? ParseJsonArrayResponse(string response)
+    {
+        try
+        {
+            // Clean up markdown code blocks if present
+            var cleaned = response.Trim();
+            if (cleaned.StartsWith("```json"))
+                cleaned = cleaned.Substring(7);
+            if (cleaned.StartsWith("```"))
+                cleaned = cleaned.Substring(3);
+            if (cleaned.EndsWith("```"))
+                cleaned = cleaned.Substring(0, cleaned.Length - 3);
+            cleaned = cleaned.Trim();
+
+            var items = JsonSerializer.Deserialize<List<string>>(cleaned);
+            return items?.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse JSON array response: {Response}", response.Substring(0, Math.Min(200, response.Length)));
+            return null;
+        }
+    }
+
+    private ClientSummaryResponse? DeserializeSummary(string summaryText)
+    {
+        try
+        {
+            // Remove counts signature
+            var json = summaryText.Substring(0, summaryText.LastIndexOf("\n[counts:"));
+            var data = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(json);
+            if (data == null) return null;
+
+            return new ClientSummaryResponse
+            {
+                StylePreferences = data.GetValueOrDefault("stylePreferences", new List<string>()),
+                RecurringPositives = data.GetValueOrDefault("recurringPositives", new List<string>()),
+                RejectionReasons = data.GetValueOrDefault("rejectionReasons", new List<string>())
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to deserialize cached summary");
+            return null;
+        }
     }
 
     private List<string> DeserializeTags(string? json)
