@@ -42,6 +42,9 @@ public class InsightsController : ControllerBase
         var approved = countsMatch.Success ? int.Parse(countsMatch.Groups[1].Value) : 0;
         var rejected = countsMatch.Success ? int.Parse(countsMatch.Groups[2].Value) : 0;
         
+        // Log the cleaned summary text for debugging
+        _logger.LogInformation("Client {ClientId} summary text: {SummaryText}", clientId, cleaned);
+        
         // Parse sections from the summary text
         var (stylePrefs, positives, rejections) = ParseSummarySections(cleaned);
         
@@ -73,36 +76,57 @@ public class InsightsController : ControllerBase
         {
             var lower = line.ToLowerInvariant();
             
-            // Detect section headers
-            if (lower.Contains("style") && (lower.Contains("preference") || lower.Contains(":") || lower.Contains("tendencies")))
+            // Detect section headers - more lenient matching
+            // Style Preferences section
+            if ((lower.Contains("style") && lower.Contains("preference")) || 
+                (lower.Contains("style") && lower.Contains("tendenc")) ||
+                lower.StartsWith("style preferences:"))
             {
                 currentSection = "style";
                 continue;
             }
-            else if (lower.Contains("positive") || lower.Contains("strength") || lower.Contains("success"))
+            // Recurring Positives section
+            else if (lower.Contains("recurring") && lower.Contains("positive") ||
+                     lower.StartsWith("recurring positives:") ||
+                     lower.Contains("positive") && lower.Contains(":") ||
+                     lower.Contains("strength") || 
+                     lower.Contains("success"))
             {
                 currentSection = "positives";
                 continue;
             }
-            else if (lower.Contains("rejection") || lower.Contains("issue") || lower.Contains("concern"))
+            // Rejection Reasons section
+            else if (lower.Contains("rejection") && lower.Contains("reason") ||
+                     lower.StartsWith("rejection reasons:") ||
+                     lower.Contains("rejection") && lower.Contains(":") ||
+                     lower.Contains("common rejection") ||
+                     lower.Contains("issue") || 
+                     lower.Contains("concern"))
             {
                 currentSection = "rejections";
                 continue;
             }
             
-            // Parse bullet points
-            var cleaned = line.TrimStart('-', '•', '*', '·').Trim();
+            // Parse bullet points or plain text lines
+            var cleaned = line.TrimStart('-', '•', '*', '·', ' ').Trim();
             if (string.IsNullOrWhiteSpace(cleaned))
                 continue;
             
+            // Skip lines that look like section headers themselves
+            if (cleaned.EndsWith(':'))
+                continue;
+            
             // Add to appropriate section
-            if (currentSection == "style" && !cleaned.EndsWith(':'))
+            if (currentSection == "style")
                 style.Add(cleaned);
-            else if (currentSection == "positives" && !cleaned.EndsWith(':'))
+            else if (currentSection == "positives")
                 positives.Add(cleaned);
-            else if (currentSection == "rejections" && !cleaned.EndsWith(':'))
+            else if (currentSection == "rejections")
                 rejections.Add(cleaned);
         }
+        
+        _logger.LogInformation("Parsed {StyleCount} style prefs, {PositivesCount} positives, {RejectionsCount} rejections", 
+            style.Count, positives.Count, rejections.Count);
         
         return (style, positives, rejections);
     }

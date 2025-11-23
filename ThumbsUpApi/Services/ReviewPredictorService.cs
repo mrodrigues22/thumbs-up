@@ -78,8 +78,8 @@ public class ReviewPredictorService : IReviewPredictorService
 
         var comments = reviews.Where(r => !string.IsNullOrWhiteSpace(r.Comment)).Select(r => r.Comment!.Trim()).ToList();
 
-        var systemPrompt = "You summarize a client's stylistic and preference tendencies from structured data only. Always use clear section headers followed by bullet points.";
-        var userPrompt = $"ClientName: {client.Name ?? client.Email}\nApprovedCount: {approved}\nRejectedCount: {rejected}\nTopTags: {string.Join(",", tagFreq.Select(t => t.Tag + ":" + t.Count))}\nRecentComments: {string.Join(" || ", comments.Take(10))}\n\nFormat your response with these three sections:\nStyle Preferences:\n- [bullet points]\n\nRecurring Positives:\n- [bullet points]\n\nRejection Reasons:\n- [bullet points]\n\nKeep under 120 words total.";
+        var systemPrompt = "You summarize a client's stylistic and preference tendencies from structured data only. Always use clear section headers followed by bullet points. Even with limited data, always include all three sections.";
+        var userPrompt = $"ClientName: {client.Name ?? client.Email}\nApprovedCount: {approved}\nRejectedCount: {rejected}\nTopTags: {string.Join(",", tagFreq.Select(t => t.Tag + ":" + t.Count))}\nRecentComments: {string.Join(" || ", comments.Take(10))}\n\nFormat your response with these three sections (even if some are minimal due to limited data):\n\nStyle Preferences:\n- [bullet points or 'Insufficient data yet']\n\nRecurring Positives:\n- [bullet points or 'Insufficient data yet']\n\nRejection Reasons:\n- [bullet points or 'No rejections yet']\n\nKeep under 120 words total. Always include all three section headers.";
         
         string summaryText;
         try
