@@ -32,95 +32,61 @@ export const SubmissionFilters: React.FC<SubmissionFiltersProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Filters</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-3 mb-4">
+      {/* Compact Search Bar */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <Input
+            label=""
+            name="search"
+            type="text"
+            value={filters.searchTerm || ''}
+            onChange={(value) => handleFilterChange('searchTerm', value)}
+            placeholder="Search submissions..."
+          />
+        </div>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-sm text-blue-600 hover:text-blue-700"
+          className="px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors whitespace-nowrap flex items-center gap-1"
         >
-          {isExpanded ? 'Hide' : 'Show'} filters
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+          </svg>
+          {isExpanded ? 'Less' : 'More'}
         </button>
       </div>
 
-      {/* Search */}
-      <div className="mb-4">
-        <Input
-          label=""
-          name="search"
-          type="text"
-          value={filters.searchTerm || ''}
-          onChange={(value) => handleFilterChange('searchTerm', value)}
-          placeholder="Search by client name, email, caption, or message..."
-        />
+      {/* Status Pills - Always Visible */}
+      <div className="flex flex-wrap gap-1.5 mt-2">
+        {[
+          { value: undefined, label: 'All' },
+          { value: Status.Pending, label: 'Pending' },
+          { value: Status.Approved, label: 'Approved' },
+          { value: Status.Rejected, label: 'Rejected' },
+          { value: Status.Expired, label: 'Expired' },
+        ].map(({ value, label }) => (
+          <button
+            key={label}
+            onClick={() => handleFilterChange('status', value)}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+              filters.status === value
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
+      {/* Expanded Filters */}
       {isExpanded && (
-        <div className="space-y-4">
-          {/* Status Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: undefined, label: 'All' },
-                { value: Status.Pending, label: 'Pending' },
-                { value: Status.Approved, label: 'Approved' },
-                { value: Status.Rejected, label: 'Rejected' },
-                { value: Status.Expired, label: 'Expired' },
-              ].map(({ value, label }) => (
-                <button
-                  key={label}
-                  onClick={() => handleFilterChange('status', value)}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                    filters.status === value
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Sort */}
-          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Sort By
-              </label>
-              <select
-                value={filters.sortBy || 'createdAt'}
-                onChange={(e) => handleFilterChange('sortBy', e.target.value)}
-                className="input-field"
-              >
-                <option value="createdAt">Created Date</option>
-                <option value="client">Client</option>
-                <option value="status">Status</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Order
-              </label>
-              <select
-                value={filters.sortOrder || 'desc'}
-                onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
-                className="input-field"
-              >
-                <option value="desc">Newest First</option>
-                <option value="asc">Oldest First</option>
-              </select>
-            </div>
-          </div> */}
-
+        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
           {/* Date Range */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="dateFrom" className="block text-sm font-medium text-gray-700 mb-1">
-                From Date
+              <label htmlFor="dateFrom" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                From
               </label>
               <input
                 id="dateFrom"
@@ -128,12 +94,12 @@ export const SubmissionFilters: React.FC<SubmissionFiltersProps> = ({
                 type="date"
                 value={filters.dateFrom || ''}
                 onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-                className="input-field"
+                className="input-field text-sm"
               />
             </div>
             <div>
-              <label htmlFor="dateTo" className="block text-sm font-medium text-gray-700 mb-1">
-                To Date
+              <label htmlFor="dateTo" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                To
               </label>
               <input
                 id="dateTo"
@@ -141,7 +107,7 @@ export const SubmissionFilters: React.FC<SubmissionFiltersProps> = ({
                 type="date"
                 value={filters.dateTo || ''}
                 onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                className="input-field"
+                className="input-field text-sm"
               />
             </div>
           </div>
@@ -149,7 +115,7 @@ export const SubmissionFilters: React.FC<SubmissionFiltersProps> = ({
           {/* Reset Button */}
           <div className="flex justify-end">
             <Button variant="secondary" size="small" onClick={handleReset}>
-              Reset Filters
+              Reset
             </Button>
           </div>
         </div>
