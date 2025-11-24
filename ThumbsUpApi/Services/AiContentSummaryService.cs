@@ -96,7 +96,7 @@ public class AiContentSummaryService : IContentSummaryService
             messageAlignmentTokens = CalculateAlignmentTokens(submission.Message, subjects, vibes, notable, colors, keywords, tags)
         };
 
-        var systemPrompt = @"You are a content summarization assistant for a creative review platform. 
+        var systemPrompt = @"You are a ar director for a creative review platform. 
 Your task is to generate natural, professional 2-3 sentence summaries based ONLY on the provided structured data.
 
 Rules:

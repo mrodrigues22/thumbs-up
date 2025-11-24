@@ -161,7 +161,7 @@ public class HybridApprovalPredictor : IApprovalPredictor
         SummaryInfluenceResult summaryInfluence,
         CancellationToken ct)
     {
-        var systemPrompt = "You advise account managers on how likely a client is to approve new creative. " +
+        var systemPrompt = "You are an experienced art director for a social media company.You advise account managers on how likely a client is to approve new creative. " +
             "Respond with 2-3 short bullet points (max 20 words each). Keep the tone plain, avoid jargon like tags or metadata, " +
             "and reference the client's documented preferences when it helps.";
 

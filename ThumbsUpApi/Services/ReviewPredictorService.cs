@@ -196,7 +196,7 @@ public class ReviewPredictorService : IReviewPredictorService
         if (approvedTags.Count == 0 && approvedComments.Count == 0)
             return new List<string> { "Insufficient data yet" };
 
-        var systemPrompt = "You identify a client's style preferences from their approved content. Return ONLY a JSON array of 3-5 concise bullet points (strings). Each point should describe a style preference or tendency.";
+        var systemPrompt = "You are an experienced art director for a social media company. Identify a client's style preferences from their approved content. Return ONLY a JSON array of 3-5 concise bullet points (strings). Each point should describe a style preference or tendency.";
         var userPrompt = $"Client: {client.Name ?? client.Email}\nApproved Tags: {string.Join(", ", approvedTags.Select(t => $"{t.Tag}({t.Count})"))}\nApproved Comments: {string.Join(" | ", approvedComments.Take(8))}\n\nIdentify their style preferences as a JSON array of strings.";
         
         try
@@ -237,7 +237,7 @@ public class ReviewPredictorService : IReviewPredictorService
         if (approvedTags.Count == 0 && approvedComments.Count == 0)
             return new List<string> { "Insufficient data yet" };
 
-        var systemPrompt = "You identify recurring positive patterns in approved content. Return ONLY a JSON array of 3-5 concise bullet points (strings). Focus on what consistently works well.";
+        var systemPrompt = "You are an experienced art director for a social media company. You identify recurring positive patterns in approved content. Return ONLY a JSON array of 3-5 concise bullet points (strings). Focus on what consistently works well.";
         var userPrompt = $"Client: {client.Name ?? client.Email}\nApproved Tags: {string.Join(", ", approvedTags.Select(t => $"{t.Tag}({t.Count})"))}\nApproved Comments: {string.Join(" | ", approvedComments.Take(8))}\n\nIdentify recurring positive patterns as a JSON array of strings.";
         
         try
@@ -277,7 +277,7 @@ public class ReviewPredictorService : IReviewPredictorService
         if (rejectedComments.Count == 0)
             return new List<string> { "No rejections yet" };
 
-        var systemPrompt = "You identify common rejection reasons from rejected content comments. Return ONLY a JSON array of 3-5 concise bullet points (strings). Focus on why content gets rejected.";
+        var systemPrompt = "You are an experienced art director for a social media company.You identify common rejection reasons from rejected content comments. Return ONLY a JSON array of 3-5 concise bullet points (strings). Focus on why content gets rejected.";
         var userPrompt = $"Client: {client.Name ?? client.Email}\nRejected Comments: {string.Join(" | ", rejectedComments.Take(10))}\n\nIdentify common rejection reasons as a JSON array of strings.";
         
         try
