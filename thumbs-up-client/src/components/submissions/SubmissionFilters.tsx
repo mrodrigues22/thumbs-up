@@ -97,7 +97,7 @@ export const SubmissionFilters: React.FC<SubmissionFiltersProps> = ({
                 className="input-field"
               >
                 <option value="createdAt">Created Date</option>
-                <option value="clientEmail">Client Email</option>
+                <option value="client">Client</option>
                 <option value="status">Status</option>
               </select>
             </div>

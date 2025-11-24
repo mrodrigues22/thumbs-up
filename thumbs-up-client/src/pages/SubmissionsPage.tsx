@@ -28,16 +28,11 @@ export default function SubmissionsPage() {
     refetch,
   } = useSubmissions({ filters });
 
-  // Group submissions by client and sort by most recent
+  // Group submissions by client (sorting is already handled by the filters)
   const groupedSubmissions = useMemo(() => {
-    // Sort submissions by date (most recent first)
-    const sorted = [...filteredSubmissions].sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
     // Group by client
     const grouped = new Map<string, SubmissionResponse[]>();
-    sorted.forEach(submission => {
+    filteredSubmissions.forEach(submission => {
       const clientKey = submission.clientId || submission.clientEmail;
       if (!grouped.has(clientKey)) {
         grouped.set(clientKey, []);

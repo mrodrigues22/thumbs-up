@@ -99,8 +99,11 @@ export const useSubmissions = (options: UseSubmissionsOptions = {}): UseSubmissi
           case 'createdAt':
             comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
             break;
-          case 'clientEmail':
-            comparison = a.clientEmail.localeCompare(b.clientEmail);
+          case 'client':
+            // Sort by clientName first, fall back to clientEmail if name is not available
+            const aClient = a.clientName || a.clientEmail;
+            const bClient = b.clientName || b.clientEmail;
+            comparison = aClient.localeCompare(bClient);
             break;
           case 'status':
             comparison = a.status - b.status;

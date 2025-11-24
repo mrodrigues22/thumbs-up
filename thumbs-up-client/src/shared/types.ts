@@ -271,7 +271,7 @@ export interface SubmissionFilters {
   searchTerm?: string;
   dateFrom?: string;
   dateTo?: string;
-  sortBy?: 'createdAt' | 'clientEmail' | 'status';
+  sortBy?: 'createdAt' | 'client' | 'status';
   sortOrder?: 'asc' | 'desc';
 }
 
