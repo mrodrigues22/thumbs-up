@@ -19,7 +19,6 @@ export default function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-  const [showFullOcr, setShowFullOcr] = useState(false);
   const [isReanalyzing, setIsReanalyzing] = useState(false);
   const { user } = useAuthStore();
 
@@ -81,13 +80,6 @@ export default function SubmissionDetailPage() {
     if (submission?.accessPassword) {
       navigator.clipboard.writeText(submission.accessPassword);
       toast.success('Password copied to clipboard!');
-    }
-  };
-
-  const handleCopyOcrText = () => {
-    if (submission?.contentFeature?.ocrText) {
-      navigator.clipboard.writeText(submission.contentFeature.ocrText);
-      toast.success('Detected text copied');
     }
   };
 
