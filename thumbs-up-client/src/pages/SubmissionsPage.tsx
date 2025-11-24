@@ -50,7 +50,7 @@ export default function SubmissionsPage() {
       clientName: submissions[0].clientName || submissions[0].clientEmail,
       clientEmail: submissions[0].clientEmail,
       clientCompanyName: submissions[0].clientCompanyName,
-      submissions: submissions.slice(0, 3), // Only show the 3 most recent submissions per client
+      submissions: submissions,
       totalCount: submissions.length,
     }));
   }, [filteredSubmissions]);
@@ -174,6 +174,26 @@ interface ClientSubmissionGroupProps {
 }
 
 function ClientSubmissionGroup({ group, formatDate, navigate }: ClientSubmissionGroupProps) {
+  const [scrollContainerRef, setScrollContainerRef] = useState<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = (container: HTMLDivElement) => {
+    setCanScrollLeft(container.scrollLeft > 0);
+    setCanScrollRight(
+      container.scrollLeft < container.scrollWidth - container.clientWidth - 1
+    );
+  };
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (!scrollContainerRef) return;
+    const scrollAmount = 300;
+    const newScrollLeft = direction === 'left'
+      ? scrollContainerRef.scrollLeft - scrollAmount
+      : scrollContainerRef.scrollLeft + scrollAmount;
+    scrollContainerRef.scrollTo({ left: newScrollLeft, behavior: 'smooth' });
+  };
+
   return (
     <div className="overflow-hidden">
       {/* Client Header */}
@@ -189,27 +209,59 @@ function ClientSubmissionGroup({ group, formatDate, navigate }: ClientSubmission
           )}
           <span>•</span>
           <span>{group.totalCount} submission{group.totalCount !== 1 ? 's' : ''}</span>
-          {group.totalCount > group.submissions.length && (
-            <>
-              <span>•</span>
-              <span className="text-blue-600">Showing {group.submissions.length} most recent</span>
-            </>
-          )}
         </div>
       </div>
 
-      {/* Submissions Grid */}
-      <div className="px-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+      {/* Submissions Carousel */}
+      <div className="relative px-6">
+        {/* Left Arrow */}
+        {canScrollLeft && (
+          <button
+            onClick={() => scroll('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/95 hover:bg-white rounded-full p-3 shadow-xl transition-all"
+            aria-label="Scroll left"
+          >
+            <svg className="w-6 h-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+
+        {/* Scrollable Container */}
+        <div
+          ref={(el) => {
+            if (el && el !== scrollContainerRef) {
+              setScrollContainerRef(el);
+              checkScroll(el);
+            }
+          }}
+          onScroll={(e) => checkScroll(e.currentTarget)}
+          className="flex gap-3 overflow-x-auto scroll-smooth"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
           {group.submissions.map((submission) => (
-            <SubmissionCard
-              key={submission.id}
-              submission={submission}
-              formatDate={formatDate}
-              navigate={navigate}
-            />
+            <div key={submission.id} className="flex-shrink-0 w-48">
+              <SubmissionCard
+                submission={submission}
+                formatDate={formatDate}
+                navigate={navigate}
+              />
+            </div>
           ))}
         </div>
+
+        {/* Right Arrow */}
+        {canScrollRight && (
+          <button
+            onClick={() => scroll('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/95 hover:bg-white rounded-full p-3 shadow-xl transition-all"
+            aria-label="Scroll right"
+          >
+            <svg className="w-6 h-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );
