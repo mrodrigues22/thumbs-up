@@ -323,22 +323,31 @@ export default function ClientReviewPage() {
             
             {submission.mediaFiles.length === 1 ? (
               // Single image - no carousel needed
-              <div className="bg-gray-100 rounded-lg overflow-hidden">
-                <div className="relative" style={{ paddingBottom: '75%' }}>
-                  {submission.mediaFiles[0].fileType === MediaFileType.Image ? (
-                    <img 
-                      src={submission.mediaFiles[0].fileUrl} 
-                      alt={submission.mediaFiles[0].fileName} 
-                      className="absolute inset-0 w-full h-full object-contain"
-                    />
-                  ) : (
-                    <video 
-                      src={submission.mediaFiles[0].fileUrl} 
-                      controls 
-                      className="absolute inset-0 w-full h-full object-contain"
-                    />
-                  )}
+              <div>
+                <div className="bg-gray-100 rounded-lg overflow-hidden">
+                  <div className="relative" style={{ paddingBottom: '75%' }}>
+                    {submission.mediaFiles[0].fileType === MediaFileType.Image ? (
+                      <img 
+                        src={submission.mediaFiles[0].fileUrl} 
+                        alt={submission.mediaFiles[0].fileName} 
+                        className="absolute inset-0 w-full h-full object-contain"
+                      />
+                    ) : (
+                      <video 
+                        src={submission.mediaFiles[0].fileUrl} 
+                        controls 
+                        className="absolute inset-0 w-full h-full object-contain"
+                      />
+                    )}
+                  </div>
                 </div>
+                
+                {/* Caption below image */}
+                {submission.captions && (
+                  <div className="mt-3 px-1">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{submission.captions}</p>
+                  </div>
+                )}
               </div>
             ) : (
               // Multiple images - Instagram-style carousel
@@ -392,6 +401,13 @@ export default function ClientReviewPage() {
                   </div>
                   
                 </div>
+
+                {/* Caption below carousel */}
+                {submission.captions && (
+                  <div className="mt-3 px-1">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{submission.captions}</p>
+                  </div>
+                )}
 
                 {/* Dots indicator */}
                 <div className="flex justify-center gap-2 mt-4">
