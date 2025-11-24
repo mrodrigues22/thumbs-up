@@ -44,7 +44,8 @@ public class SubmissionMapper
             FileUrl = _fileStorage.GetFileUrl(mediaFile.FilePath),
             FileType = mediaFile.FileType,
             FileSize = mediaFile.FileSize,
-            UploadedAt = mediaFile.UploadedAt
+            UploadedAt = mediaFile.UploadedAt,
+            Order = mediaFile.Order
         };
     }
 

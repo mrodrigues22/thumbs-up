@@ -7,8 +7,112 @@ import { useCreateSubmission } from '../hooks/submissions';
 import { useClients, clientKeys } from '../hooks/clients/useClients';
 import { submissionService } from '../services/submissionService';
 import { toast } from 'react-toastify';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type ClientMode = 'existing' | 'new' | 'quick';
+
+// Sortable file item component
+interface SortableFileItemProps {
+  file: File;
+  index: number;
+  onRemove: () => void;
+}
+
+function SortableFileItem({ file, index, onRemove }: SortableFileItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `file-${index}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700"
+    >
+      <div className="flex items-center min-w-0 flex-1 gap-3">
+        {/* Drag Handle */}
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
+          title="Drag to reorder"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+          </svg>
+        </button>
+
+        {/* Thumbnail */}
+        {file.type.startsWith('image/') ? (
+          <img
+            src={URL.createObjectURL(file)}
+            alt={file.name}
+            className="w-12 h-12 object-cover rounded flex-shrink-0"
+          />
+        ) : file.type.startsWith('video/') ? (
+          <video
+            src={URL.createObjectURL(file)}
+            className="w-12 h-12 object-cover rounded flex-shrink-0"
+          />
+        ) : (
+          <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center flex-shrink-0">
+            <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+
+        {/* File Info */}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-gray-900 dark:text-gray-100 font-medium">{file.name}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {(file.size / 1024 / 1024).toFixed(2)} MB
+          </p>
+        </div>
+      </div>
+
+      {/* Remove Button */}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="ml-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex-shrink-0"
+        title="Remove file"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </li>
+  );
+}
 
 export default function CreateSubmissionPage() {
   const navigate = useNavigate();
@@ -34,6 +138,14 @@ export default function CreateSubmissionPage() {
   const [accessPassword, setAccessPassword] = useState('');
   const [isDragging, setIsDragging] = useState(false);
 
+  // Sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   // Auto-select client if coming from client detail page
   useEffect(() => {
     if (clientIdFromUrl) {
@@ -41,6 +153,17 @@ export default function CreateSubmissionPage() {
       setClientMode('existing');
     }
   }, [clientIdFromUrl]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = parseInt(active.id.toString().replace('file-', ''));
+      const newIndex = parseInt(over.id.toString().replace('file-', ''));
+      
+      setFiles((items) => arrayMove(items, oldIndex, newIndex));
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -483,7 +606,7 @@ export default function CreateSubmissionPage() {
                   <div className="mt-3 p-3 bg-gray-50 rounded-md  dark:bg-gray-900">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {files.length} file(s) selected:
+                        {files.length} file(s) selected - drag to reorder:
                       </p>
                       <button
                         type="button"
@@ -493,48 +616,27 @@ export default function CreateSubmissionPage() {
                         Clear all
                       </button>
                     </div>
-                    <ul className="text-sm text-gray-600 dark:text-gray-400 dark:bg-gray-900 space-y-2">
-                      {files.map((file, index) => (
-                        <li key={index} className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center min-w-0 flex-1 gap-3">
-                            {file.type.startsWith('image/') ? (
-                              <img
-                                src={URL.createObjectURL(file)}
-                                alt={file.name}
-                                className="w-12 h-12 object-cover rounded flex-shrink-0"
-                              />
-                            ) : file.type.startsWith('video/') ? (
-                              <video
-                                src={URL.createObjectURL(file)}
-                                className="w-12 h-12 object-cover rounded flex-shrink-0"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center flex-shrink-0">
-                                <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                </svg>
-                              </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-gray-900 dark:text-gray-100 font-medium">{file.name}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {(file.size / 1024 / 1024).toFixed(2)} MB
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeFile(index)}
-                            className="ml-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex-shrink-0"
-                            title="Remove file"
-                          >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={files.map((_, index) => `file-${index}`)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <ul className="text-sm text-gray-600 dark:text-gray-400 dark:bg-gray-900 space-y-2">
+                          {files.map((file, index) => (
+                            <SortableFileItem
+                              key={`file-${index}`}
+                              file={file}
+                              index={index}
+                              onRemove={() => removeFile(index)}
+                            />
+                          ))}
+                        </ul>
+                      </SortableContext>
+                    </DndContext>
                   </div>
                 )}
               </div>

@@ -23,6 +23,9 @@ public class MediaFile
     
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
     
+    [Required]
+    public int Order { get; set; }
+    
     // Navigation property
     public Submission Submission { get; set; } = null!;
 }

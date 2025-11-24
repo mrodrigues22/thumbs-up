@@ -50,6 +50,7 @@ public class MediaFileResponse
     public MediaFileType FileType { get; set; }
     public long FileSize { get; set; }
     public DateTime UploadedAt { get; set; }
+    public int Order { get; set; }
 }
 
 public class ValidateAccessRequest

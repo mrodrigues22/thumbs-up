@@ -162,6 +162,7 @@ public class SubmissionController : ControllerBase
         
         // Upload files
         var mediaFiles = new List<MediaFile>();
+        int order = 0;
         foreach (var file in request.Files)
         {
             try
@@ -176,7 +177,8 @@ public class SubmissionController : ControllerBase
                     FilePath = filePath,
                     FileType = IsImageFile(file) ? MediaFileType.Image : MediaFileType.Video,
                     FileSize = file.Length,
-                    UploadedAt = DateTime.UtcNow
+                    UploadedAt = DateTime.UtcNow,
+                    Order = order++
                 };
                 
                 mediaFiles.Add(mediaFile);

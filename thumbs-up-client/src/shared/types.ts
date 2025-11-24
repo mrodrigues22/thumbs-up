@@ -119,6 +119,7 @@ export interface MediaFileResponse {
   fileType: MediaFileType;
   fileSize: number;
   uploadedAt: string;
+  order: number;
 }
 
 export interface MediaFileUpload {

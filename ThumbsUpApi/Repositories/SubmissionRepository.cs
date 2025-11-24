@@ -23,7 +23,7 @@ public class SubmissionRepository : ISubmissionRepository
     public async Task<Submission?> GetByIdWithIncludesAsync(Guid id, string userId)
     {
         return await _context.Submissions
-            .Include(s => s.MediaFiles)
+            .Include(s => s.MediaFiles.OrderBy(m => m.Order))
             .Include(s => s.Review)
             .Include(s => s.ContentFeature)
             .Include(s => s.CreatedBy)
@@ -34,7 +34,7 @@ public class SubmissionRepository : ISubmissionRepository
     public async Task<Submission?> GetByIdInternalAsync(Guid id)
     {
         return await _context.Submissions
-            .Include(s => s.MediaFiles)
+            .Include(s => s.MediaFiles.OrderBy(m => m.Order))
             .Include(s => s.ContentFeature)
             .FirstOrDefaultAsync(s => s.Id == id);
     }
@@ -48,7 +48,7 @@ public class SubmissionRepository : ISubmissionRepository
     public async Task<IEnumerable<Submission>> GetAllByUserIdAsync(string userId)
     {
         return await _context.Submissions
-            .Include(s => s.MediaFiles)
+            .Include(s => s.MediaFiles.OrderBy(m => m.Order))
             .Include(s => s.Review)
             .Include(s => s.ContentFeature)
             .Include(s => s.CreatedBy)
@@ -61,7 +61,7 @@ public class SubmissionRepository : ISubmissionRepository
     public async Task<IEnumerable<Submission>> GetAllByUserIdAsync(string userId, SubmissionQueryObject query)
     {
         var queryable = _context.Submissions
-            .Include(s => s.MediaFiles)
+            .Include(s => s.MediaFiles.OrderBy(m => m.Order))
             .Include(s => s.Review)
             .Include(s => s.ContentFeature)
             .Include(s => s.CreatedBy)
@@ -131,7 +131,7 @@ public class SubmissionRepository : ISubmissionRepository
 
         // Match submissions by ClientId OR by ClientEmail (for submissions created before client entity)
         return await _context.Submissions
-            .Include(s => s.MediaFiles)
+            .Include(s => s.MediaFiles.OrderBy(m => m.Order))
             .Include(s => s.Review)
             .Include(s => s.ContentFeature)
             .Include(s => s.CreatedBy)
