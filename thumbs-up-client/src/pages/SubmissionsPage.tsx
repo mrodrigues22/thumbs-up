@@ -197,19 +197,8 @@ function ClientSubmissionGroup({ group, formatDate, navigate }: ClientSubmission
   return (
     <div className="overflow-hidden">
       {/* Client Header */}
-      <div className="px-6 py-4 mb-4">
+      <div className="px-6 py-4">
         <h2 className="text-xl font-semibold text-gray-900">{group.clientName}</h2>
-        <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-          <span>{group.clientEmail}</span>
-          {group.clientCompanyName && (
-            <>
-              <span>•</span>
-              <span>{group.clientCompanyName}</span>
-            </>
-          )}
-          <span>•</span>
-          <span>{group.totalCount} submission{group.totalCount !== 1 ? 's' : ''}</span>
-        </div>
       </div>
 
       {/* Submissions Carousel */}
