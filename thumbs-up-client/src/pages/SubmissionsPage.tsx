@@ -200,7 +200,7 @@ function ClientSubmissionGroup({ group, formatDate, navigate }: ClientSubmission
 
       {/* Submissions Grid */}
       <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {group.submissions.map((submission) => (
             <SubmissionCard
               key={submission.id}
@@ -233,8 +233,8 @@ function SubmissionCard({ submission, formatDate, navigate }: SubmissionCardProp
       {/* Image Gallery */}
       <div>
         {submission.mediaFiles.length === 0 ? (
-          <div className="bg-gray-100 flex items-center justify-center h-64">
-            <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-gray-100 flex items-center justify-center h-40">
+            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -284,10 +284,10 @@ function SubmissionCard({ submission, formatDate, navigate }: SubmissionCardProp
                       e.stopPropagation();
                       setCurrentMediaIndex(currentMediaIndex - 1);
                     }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all z-10"
+                    className="absolute left-1 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1 shadow-lg transition-all z-10"
                     aria-label="Previous image"
                   >
-                    <svg className="w-5 h-5 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-4 h-4 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
@@ -299,24 +299,24 @@ function SubmissionCard({ submission, formatDate, navigate }: SubmissionCardProp
                       e.stopPropagation();
                       setCurrentMediaIndex(currentMediaIndex + 1);
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all z-10"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1 shadow-lg transition-all z-10"
                     aria-label="Next image"
                   >
-                    <svg className="w-5 h-5 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-4 h-4 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
                 )}
 
                 {/* Counter indicator */}
-                <div className="absolute top-3 right-3 bg-black/60 text-white px-2.5 py-1 rounded-full text-xs font-medium">
+                <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-0.5 rounded-full text-xs font-medium">
                   {currentMediaIndex + 1} / {submission.mediaFiles.length}
                 </div>
               </div>
             </div>
 
             {/* Dots indicator */}
-            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+            <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
               {submission.mediaFiles.map((_, index) => (
                 <button
                   key={index}
@@ -338,8 +338,8 @@ function SubmissionCard({ submission, formatDate, navigate }: SubmissionCardProp
       </div>
 
       {/* Submission Info */}
-      <div className="p-4 space-y-2">
-        <p className="text-sm text-gray-700 font-medium">
+      <div className="p-3 space-y-1.5">
+        <p className="text-xs text-gray-700 font-medium">
           {formatDate(submission.createdAt)}
         </p>
         <SubmissionStatusBadge status={submission.status} />
