@@ -351,7 +351,7 @@ export default function ClientsPage() {
         <Modal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
-          title={editingClient ? 'Edit Client' : 'Add New Client'}
+          title={editingClient ? 'Edit client' : 'Add new client'}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
