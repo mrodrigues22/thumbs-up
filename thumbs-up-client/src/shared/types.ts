@@ -182,6 +182,7 @@ export interface SubmissionResponse {
   clientId?: string;
   clientEmail: string;
   clientName?: string;
+  clientCompanyName?: string;
   accessToken: string;
   accessPassword?: string;
   message?: string;

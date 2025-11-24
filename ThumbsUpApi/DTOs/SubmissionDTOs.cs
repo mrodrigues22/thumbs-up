@@ -28,6 +28,7 @@ public class SubmissionResponse
     public Guid? ClientId { get; set; }
     public string ClientEmail { get; set; } = string.Empty;
     public string? ClientName { get; set; }
+    public string? ClientCompanyName { get; set; }
     public string AccessToken { get; set; } = string.Empty;
     public string? AccessPassword { get; set; }
     public string? Message { get; set; }

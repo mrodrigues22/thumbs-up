@@ -453,8 +453,8 @@ export default function SubmissionDetailPage() {
             <Card title="Submission Information">
               <dl className="grid grid-cols-1 gap-4">
                 <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-100">Client Email</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{submission.clientEmail}</dd>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-100">Client</dt>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{submission.clientCompanyName || submission.clientName}</dd>
                 </div>
                 {submission.message && (
                   <div>

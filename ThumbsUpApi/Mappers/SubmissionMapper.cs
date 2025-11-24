@@ -21,6 +21,7 @@ public class SubmissionMapper
             ClientId = submission.ClientId,
             ClientEmail = submission.ClientEmail,
             ClientName = submission.Client?.Name,
+            ClientCompanyName = submission.Client?.CompanyName,
             AccessToken = submission.AccessToken,
             AccessPassword = submission.AccessPassword,
             Message = submission.Message,
