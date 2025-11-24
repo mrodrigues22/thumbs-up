@@ -496,7 +496,11 @@ export default function SubmissionDetailPage() {
             )}
           </div>
 
-          {/* Share Info - Only show if not reviewed */}
+          
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Share Info - Only show if not reviewed */}
             {!submission.review && (
               <Card title="Share with Client">
                 <div className="space-y-3">
@@ -592,9 +596,6 @@ export default function SubmissionDetailPage() {
                 </div>
               </Card>
             )}
-
-          {/* Sidebar */}
-          <div className="space-y-6">
             {/* Review - Show first if it exists */}
             {submission.review && (
               <Card title="Client Review">
