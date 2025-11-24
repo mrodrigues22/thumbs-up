@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { CreateSubmissionRequest, SubmissionResponse } from '../shared/types';
+import type { CreateSubmissionRequest, SubmissionResponse, SubmissionFilters } from '../shared/types';
 
 export const submissionService = {
   async createSubmission(data: CreateSubmissionRequest): Promise<SubmissionResponse> {
@@ -35,8 +35,20 @@ export const submissionService = {
     return response.data;
   },
 
-  async getSubmissions(): Promise<SubmissionResponse[]> {
-    const response = await api.get<SubmissionResponse[]>('/submission');
+  async getSubmissions(filters?: SubmissionFilters): Promise<SubmissionResponse[]> {
+    const params = new URLSearchParams();
+    
+    if (filters) {
+      if (filters.status) params.append('status', filters.status.toString());
+      if (filters.searchTerm) params.append('searchTerm', filters.searchTerm);
+      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
+      if (filters.dateTo) params.append('dateTo', filters.dateTo);
+      if (filters.sortBy) params.append('sortBy', filters.sortBy);
+      if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+    }
+    
+    const url = params.toString() ? `/submission?${params.toString()}` : '/submission';
+    const response = await api.get<SubmissionResponse[]>(url);
     return response.data;
   },
 

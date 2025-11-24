@@ -7,6 +7,7 @@ using ThumbsUpApi.Services;
 using ThumbsUpApi.Repositories;
 using ThumbsUpApi.Mappers;
 using ThumbsUpApi.Interfaces;
+using ThumbsUpApi.Helpers;
 
 namespace ThumbsUpApi.Controllers;
 
@@ -212,13 +213,13 @@ public class SubmissionController : ControllerBase
     }
     
     [HttpGet]
-    public async Task<IActionResult> GetSubmissions()
+    public async Task<IActionResult> GetSubmissions([FromQuery] SubmissionQueryObject query)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
         
-        var submissions = await _submissionRepository.GetAllByUserIdAsync(userId);
+        var submissions = await _submissionRepository.GetAllByUserIdAsync(userId, query);
         
         return Ok(submissions.Select(s => _mapper.ToResponse(s)));
     }

@@ -86,7 +86,7 @@ export const SubmissionFilters: React.FC<SubmissionFiltersProps> = ({
           </div>
 
           {/* Sort */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Sort By
@@ -114,7 +114,7 @@ export const SubmissionFilters: React.FC<SubmissionFiltersProps> = ({
                 <option value="asc">Oldest First</option>
               </select>
             </div>
-          </div>
+          </div> */}
 
           {/* Date Range */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
