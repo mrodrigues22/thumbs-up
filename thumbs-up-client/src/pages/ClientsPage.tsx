@@ -90,7 +90,7 @@ export default function ClientsPage() {
       setEditingClient(client);
       setFormData({
         email: client.email,
-        name: client.name || '',
+        name: client.name,
         companyName: client.companyName || '',
       });
     } else {
@@ -153,7 +153,7 @@ export default function ClientsPage() {
     const search = searchTerm.toLowerCase();
     return (
       client.email.toLowerCase().includes(search) ||
-      client.name?.toLowerCase().includes(search) ||
+      client.name.toLowerCase().includes(search) ||
       client.companyName?.toLowerCase().includes(search)
     );
   });
@@ -251,7 +251,7 @@ export default function ClientsPage() {
               {selectedClient && (
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-gray-900">
-                    {selectedClient.name || selectedClient.email}
+                    {selectedClient.name}
                   </p>
 
                   {aiLoading && (
@@ -368,6 +368,7 @@ export default function ClientsPage() {
               label="Name"
               name="name"
               type="text"
+              required
               value={formData.name}
               onChange={(value) => setFormData({ ...formData, name: value })}
               placeholder="John Doe"

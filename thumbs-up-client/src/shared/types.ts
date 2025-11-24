@@ -156,7 +156,7 @@ export interface ValidateAccessResponse {
 export interface Client {
   id: string;
   email: string;
-  name?: string;
+  name: string;
   companyName?: string;
   profilePictureUrl?: string;
   createdAt: string;
@@ -166,7 +166,7 @@ export interface Client {
 
 export interface CreateClientRequest {
   email: string;
-  name?: string;
+  name: string;
   companyName?: string;
 }
 

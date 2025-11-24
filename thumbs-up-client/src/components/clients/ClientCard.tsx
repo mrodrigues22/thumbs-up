@@ -19,9 +19,8 @@ export function ClientCard({ client, onSelectForAi }: ClientCardProps) {
     navigate(`/clients/${client.id}`);
   };
 
-  // Determine what to display as the primary name
-  const displayName = client.name || client.email;
-  const showEmail = !client.name;
+  // Determine what to display
+  const displayName = client.name;
   const showCompany = !!client.companyName;
 
   return (
@@ -52,14 +51,12 @@ export function ClientCard({ client, onSelectForAi }: ClientCardProps) {
           <h3 className="text-lg font-semibold text-gray-900 truncate dark:text-gray-100">
             {displayName}
           </h3>
+          <p className="text-sm text-gray-500 truncate">
+            {client.email}
+          </p>
           {showCompany && (
             <p className="text-sm text-gray-600 truncate dark:text-gray-300">
               {client.companyName}
-            </p>
-          )}
-          {showEmail && showCompany && (
-            <p className="text-sm text-gray-500 truncate">
-              {client.email}
             </p>
           )}
           <p className="text-sm text-gray-500 mt-1">

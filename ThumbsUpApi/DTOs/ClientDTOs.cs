@@ -6,7 +6,7 @@ public class ClientResponse
 {
     public Guid Id { get; set; }
     public string Email { get; set; } = string.Empty;
-    public string? Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public string? CompanyName { get; set; }
     public string? ProfilePictureUrl { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -20,7 +20,8 @@ public class CreateClientRequest
     [EmailAddress]
     public string Email { get; set; } = string.Empty;
     
-    public string? Name { get; set; }
+    [Required]
+    public string Name { get; set; } = string.Empty;
     
     public string? CompanyName { get; set; }
 }
