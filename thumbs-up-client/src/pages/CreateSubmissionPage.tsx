@@ -45,7 +45,7 @@ export default function CreateSubmissionPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
-      setFiles(selectedFiles);
+      setFiles(prevFiles => [...prevFiles, ...selectedFiles]);
       setError('');
     }
   };
@@ -77,7 +77,7 @@ export default function CreateSubmissionPage() {
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const droppedFiles = Array.from(e.dataTransfer.files);
-      setFiles(droppedFiles);
+      setFiles(prevFiles => [...prevFiles, ...droppedFiles]);
       setError('');
     }
   };
