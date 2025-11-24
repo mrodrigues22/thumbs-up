@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    confirmPassword: '',
     firstName: '',
     lastName: '',
     companyName: '',
@@ -29,6 +30,13 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    // Validate password confirmation
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
 
     try {
       await register(
@@ -93,6 +101,17 @@ export default function RegisterPage() {
                 required
                 placeholder="Minimum 6 characters"
                 helperText="Must be at least 6 characters long"
+                autoComplete="new-password"
+              />
+
+              <Input
+                label="Confirm Password"
+                name="confirmPassword"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={(value) => setFormData({ ...formData, confirmPassword: value })}
+                required
+                placeholder="Re-enter your password"
                 autoComplete="new-password"
               />
 
