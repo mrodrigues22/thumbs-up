@@ -10,7 +10,7 @@ import { Card, Button, LoadingSpinner, ErrorMessage } from '../components/common
 import { SubmissionStatusBadge } from '../components/submissions';
 import { useSubmissionDetail, useDeleteSubmission } from '../hooks/submissions';
 import { useApprovalPrediction } from '../hooks/insights';
-import { MediaFileType, ApprovalPredictionStatus, ContentFeatureStatus } from '../shared/types';
+import { MediaFileType, ApprovalPredictionStatus, ContentFeatureStatus, SubmissionStatus } from '../shared/types';
 import { toast } from 'react-toastify';
 import { useAuthStore } from '../stores/authStore';
 import { submissionService } from '../services/submissionService';
@@ -254,17 +254,19 @@ export default function SubmissionDetailPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
 
-            {/* AI Approval Insight */}
-            {isLoadingPrediction && !prediction && (
-              <Card title="AI Approval Insight">
-                <div className="animate-pulse space-y-3">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48" />
-                  <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-32" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full" />
-                </div>
-              </Card>
-            )}
-            {prediction && (
+            {/* AI Approval Insight - Only show for pending/expired submissions */}
+            {submission.status !== SubmissionStatus.Approved && submission.status !== SubmissionStatus.Rejected && (
+              <>
+                {isLoadingPrediction && !prediction && (
+                  <Card title="AI Approval Insight">
+                    <div className="animate-pulse space-y-3">
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48" />
+                      <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-32" />
+                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full" />
+                    </div>
+                  </Card>
+                )}
+                {prediction && (
               <Card title="AI Approval Insight">
                 {isPredictionReady ? (
                   <>
@@ -276,7 +278,7 @@ export default function SubmissionDetailPage() {
                           </p>
                           <div className="relative group cursor-help">
                             <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M12 6a6 6 0 00-6 6c0 1.657 1.343 3 3 3h3" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <div className="absolute left-1/2 top-full mt-2 -translate-x-1/2 w-64 bg-gray-800 text-white text-xs p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-20">
                               This AI estimate analyzes historical approval patterns, media attributes, and textual cues. Use as guidance—not a final decision.
@@ -329,8 +331,8 @@ export default function SubmissionDetailPage() {
                 )}
               </Card>
             )}
-
-            
+              </>
+            )}
 
             {/* AI Content Summary */}
             {submission.contentSummary && (
@@ -433,36 +435,7 @@ export default function SubmissionDetailPage() {
                       return <p className="text-sm text-gray-500">No visual themes detected yet.</p>;
                     })()}
 
-                    {feature?.ocrText && (
-                      <div className="border-t border-gray-100 pt-4">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Detected text
-                          </p>
-                          <div className="flex items-center gap-3 text-xs">
-                            <button
-                              type="button"
-                              onClick={() => setShowFullOcr(prev => !prev)}
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              {showFullOcr ? 'Show less' : 'Show more'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleCopyOcrText}
-                              className="text-gray-500 hover:text-gray-700"
-                            >
-                              Copy
-                            </button>
-                          </div>
-                        </div>
-                        <p className="mt-2 whitespace-pre-line text-sm text-gray-800">
-                          {showFullOcr || feature.ocrText.length <= 280
-                            ? feature.ocrText
-                            : `${feature.ocrText.slice(0, 280)}…`}
-                        </p>
-                      </div>
-                    )}
+                    
                   </>
                 ) : (
                   <p className="text-sm text-gray-500">
