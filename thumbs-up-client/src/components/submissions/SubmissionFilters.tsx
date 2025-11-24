@@ -51,7 +51,7 @@ export const SubmissionFilters: React.FC<SubmissionFiltersProps> = ({
           type="text"
           value={filters.searchTerm || ''}
           onChange={(value) => handleFilterChange('searchTerm', value)}
-          placeholder="Search by client email or message..."
+          placeholder="Search by client name, email, caption, or message..."
         />
       </div>
 

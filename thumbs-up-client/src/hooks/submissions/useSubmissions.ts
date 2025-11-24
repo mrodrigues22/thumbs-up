@@ -69,11 +69,13 @@ export const useSubmissions = (options: UseSubmissionsOptions = {}): UseSubmissi
       filtered = filtered.filter(sub => sub.status === filters.status);
     }
 
-    // Filter by search term (searches in client email)
+    // Filter by search term (searches in client name, email, caption, and message)
     if (filters.searchTerm) {
       const searchLower = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(sub =>
+        sub.clientName?.toLowerCase().includes(searchLower) ||
         sub.clientEmail.toLowerCase().includes(searchLower) ||
+        sub.captions?.toLowerCase().includes(searchLower) ||
         sub.message?.toLowerCase().includes(searchLower)
       );
     }
