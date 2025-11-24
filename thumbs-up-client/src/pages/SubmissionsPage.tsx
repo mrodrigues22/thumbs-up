@@ -7,7 +7,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/layout';
-import { Button, Card, LoadingSpinner, ErrorMessage } from '../components/common';
+import { Button, LoadingSpinner, ErrorMessage } from '../components/common';
 import { SubmissionFilters, SubmissionStatusBadge } from '../components/submissions';
 import { useSubmissions } from '../hooks/submissions';
 import type { SubmissionFilters as Filters, SubmissionResponse } from '../shared/types';
@@ -175,9 +175,9 @@ interface ClientSubmissionGroupProps {
 
 function ClientSubmissionGroup({ group, formatDate, navigate }: ClientSubmissionGroupProps) {
   return (
-    <Card className="overflow-hidden">
+    <div className="overflow-hidden">
       {/* Client Header */}
-      <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+      <div className="px-6 py-4 mb-4">
         <h2 className="text-xl font-semibold text-gray-900">{group.clientName}</h2>
         <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
           <span>{group.clientEmail}</span>
@@ -199,7 +199,7 @@ function ClientSubmissionGroup({ group, formatDate, navigate }: ClientSubmission
       </div>
 
       {/* Submissions Grid */}
-      <div className="p-6">
+      <div className="px-6">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {group.submissions.map((submission) => (
             <SubmissionCard
@@ -211,7 +211,7 @@ function ClientSubmissionGroup({ group, formatDate, navigate }: ClientSubmission
           ))}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 
