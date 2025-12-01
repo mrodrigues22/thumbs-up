@@ -4,7 +4,7 @@ using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Interfaces;
 using ThumbsUpApi.Models;
 using ThumbsUpApi.Repositories;
-using Microsoft.Extensions.Hosting;
+// Removed Microsoft.Extensions.Hosting since environment no longer referenced.
 
 namespace ThumbsUpApi.Services;
 
@@ -17,7 +17,6 @@ public class ReviewPredictorService : IReviewPredictorService
     private readonly IClientSummaryRepository _summaryRepo;
     private readonly ITextGenerationService _textGen;
     private readonly ILogger<ReviewPredictorService> _logger;
-    private readonly IHostEnvironment _hostEnvironment;
 
     public ReviewPredictorService(
         IClientRepository clientRepository,
@@ -26,8 +25,7 @@ public class ReviewPredictorService : IReviewPredictorService
         IContentFeatureRepository featureRepo,
         IClientSummaryRepository summaryRepo,
         ITextGenerationService textGen,
-        ILogger<ReviewPredictorService> logger,
-        IHostEnvironment hostEnvironment)
+        ILogger<ReviewPredictorService> logger)
     {
         _clientRepository = clientRepository;
         _submissionRepo = submissionRepo;
@@ -36,7 +34,6 @@ public class ReviewPredictorService : IReviewPredictorService
         _summaryRepo = summaryRepo;
         _textGen = textGen;
         _logger = logger;
-        _hostEnvironment = hostEnvironment;
     }
 
     /// <summary>
@@ -54,43 +51,55 @@ public class ReviewPredictorService : IReviewPredictorService
         
         // Load submissions and reviews through repositories
         var submissions = (await _submissionRepo.GetByClientIdAsync(clientId, userId)).ToList();
-        var submissionIds = submissions.Select(s => s.Id).ToList();
-        
         var reviews = (await _reviewRepo.GetByClientIdAsync(clientId, ct)).ToList();
 
         int approved = reviews.Count(r => r.Status == ReviewStatus.Approved);
         int rejected = reviews.Count(r => r.Status == ReviewStatus.Rejected);
-
-        var existing = await _summaryRepo.GetByClientIdAsync(clientId);
         var countsSignature = $"{approved}:{rejected}";
 
-
-        if (existing != null && existing.SummaryText.Contains($"[counts:{countsSignature}]"))
-        {
-            _logger.LogInformation("Using cached summary for client {ClientId}", clientId);
-            var cached = DeserializeSummary(existing.SummaryText);
-            if (cached != null)
-            {
-                cached.ClientId = clientId;
-                cached.ApprovedCount = approved;
-                cached.RejectedCount = rejected;
-                cached.GeneratedAt = existing.UpdatedAt;
-                return cached;
-            }
-        }
-        
-        // Collect data for AI generation
+        // Prepare data needed for potential cache validation BEFORE deciding reuse
         var approvedIds = reviews.Where(r => r.Status == ReviewStatus.Approved)
             .Select(r => r.SubmissionId)
             .ToHashSet();
         var rejectedIds = reviews.Where(r => r.Status == ReviewStatus.Rejected)
             .Select(r => r.SubmissionId)
             .ToHashSet();
-
-        var features = (await _featureRepo.GetBySubmissionIdsAsync(approvedIds.Union(rejectedIds).ToHashSet(), ct)).ToList();
-
         var reviewedIds = approvedIds.Union(rejectedIds).ToHashSet();
+        var features = (await _featureRepo.GetBySubmissionIdsAsync(reviewedIds, ct)).ToList();
         var coverage = AssessSummaryCoverage(approved + rejected, reviewedIds, features);
+
+        // Attempt to use cached summary only if coverage (status + pending counts + feature coverage) matches
+        var existing = await _summaryRepo.GetByClientIdAsync(clientId);
+        if (existing != null && existing.SummaryText.Contains($"[counts:{countsSignature}]"))
+        {
+            var cached = DeserializeSummary(existing.SummaryText);
+            if (cached != null)
+            {
+                // If underlying analysis coverage changed, force rebuild so status transitions (e.g. PendingAnalysis -> Ready)
+                var coverageMatches = cached.DataStatus == coverage.Status &&
+                                      cached.PendingAnalysisCount == coverage.PendingAnalysisCount &&
+                                      cached.FeatureCoverageCount == coverage.FeatureCoverageCount;
+                if (coverageMatches)
+                {
+                    _logger.LogInformation("Using cached summary for client {ClientId}", clientId);
+                    cached.ClientId = clientId;
+                    cached.ApprovedCount = approved;
+                    cached.RejectedCount = rejected;
+                    cached.GeneratedAt = existing.UpdatedAt;
+                    return cached;
+                }
+                _logger.LogInformation("Invalidating cached summary for client {ClientId} due to coverage change (Cached: {CachedStatus}/{CachedPending} Pending, {CachedCoverage} Covered | Current: {Status}/{Pending} Pending, {Coverage} Covered)",
+                    clientId,
+                    cached.DataStatus,
+                    cached.PendingAnalysisCount,
+                    cached.FeatureCoverageCount,
+                    coverage.Status,
+                    coverage.PendingAnalysisCount,
+                    coverage.FeatureCoverageCount);
+            }
+        }
+
+        // Continue to rebuild summary
         var missingSignals = new List<string>(coverage.MissingSignals);
 
         var approvedTags = features.Where(f => approvedIds.Contains(f.SubmissionId))
