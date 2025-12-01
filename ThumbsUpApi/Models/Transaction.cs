@@ -43,7 +43,10 @@ public enum TransactionStatus
     Completed = 0,
     Failed = 1,
     Refunded = 2,
-    Pending = 3
+    Pending = 3,
+    Billed = 4,
+    Canceled = 5,
+    Ready = 6
 }
 
 public enum TransactionType

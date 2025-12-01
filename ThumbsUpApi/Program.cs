@@ -90,6 +90,21 @@ builder.Services.AddHttpClient("OpenAiClient")
                     retryAttempt, timespan.TotalMilliseconds, outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString());
             }));
 
+// Configure Paddle HTTP client with retry policy
+builder.Services.AddHttpClient("PaddleClient")
+    .AddPolicyHandler((serviceProvider, request) => HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .Or<TimeoutException>()
+        .WaitAndRetryAsync(
+            retryCount: 3,
+            sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+            onRetry: (outcome, timespan, retryAttempt, context) =>
+            {
+                var logger = serviceProvider.GetService<ILogger<Program>>();
+                logger?.LogWarning("Paddle API retry attempt {RetryAttempt} after {Delay}ms due to: {Exception}",
+                    retryAttempt, timespan.TotalMilliseconds, outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString());
+            }));
+
 // AI client
 builder.Services.AddScoped<ThumbsUpApi.Services.IOpenAiClient, ThumbsUpApi.Services.OpenAiClient>();
 
@@ -137,18 +152,23 @@ else
 // Subscription Repositories
 builder.Services.AddScoped<ISubscriptionRepository, ThumbsUpApi.Repositories.SubscriptionRepository>();
 builder.Services.AddScoped<ITransactionRepository, ThumbsUpApi.Repositories.TransactionRepository>();
+builder.Services.AddScoped<IWebhookEventRepository, ThumbsUpApi.Repositories.WebhookEventRepository>();
 
 // Subscription Services
 builder.Services.AddScoped<IPaddleService, PaddleService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<PaddleWebhookService>();
 
+// Webhook processing queue and worker
+builder.Services.AddSingleton<IWebhookProcessingQueue, WebhookProcessingQueue>();
+builder.Services.AddHostedService<WebhookProcessingWorker>();
+
 // Queue and background worker
 builder.Services.AddSingleton<ThumbsUpApi.Services.ISubmissionAnalysisQueue, ThumbsUpApi.Services.SubmissionAnalysisQueue>();
 builder.Services.AddHostedService<ThumbsUpApi.Services.AiProcessingWorker>();
 builder.Services.AddHostedService<ThumbsUpApi.Services.AnalysisBackfillWorker>();
 
-// Rate Limiting for AI endpoints
+// Rate Limiting for AI endpoints and webhooks
 builder.Services.AddRateLimiter(options =>
 {
     options.AddPolicy("ai", httpContext =>
@@ -162,6 +182,17 @@ builder.Services.AddRateLimiter(options =>
                 ReplenishmentPeriod = TimeSpan.FromMinutes(1),
                 TokensPerPeriod = 20,
                 AutoReplenishment = true
+            }));
+    
+    options.AddPolicy("webhook", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: key => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 10
             }));
 });
 

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Text.Json;
 using ThumbsUpApi.DTOs;
 using ThumbsUpApi.Interfaces;
@@ -12,22 +13,23 @@ namespace ThumbsUpApi.Controllers;
 [ApiController]
 [Route("api/paddle/webhook")]
 [AllowAnonymous]
+[EnableRateLimiting("webhook")]
 public class PaddleWebhookController : ControllerBase
 {
     private readonly IPaddleService _paddleService;
-    private readonly PaddleWebhookService _webhookService;
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IWebhookProcessingQueue _webhookQueue;
+    private readonly IWebhookEventRepository _webhookEventRepo;
     private readonly ILogger<PaddleWebhookController> _logger;
 
     public PaddleWebhookController(
         IPaddleService paddleService,
-        PaddleWebhookService webhookService,
-        UserManager<ApplicationUser> userManager,
+        IWebhookProcessingQueue webhookQueue,
+        IWebhookEventRepository webhookEventRepo,
         ILogger<PaddleWebhookController> logger)
     {
         _paddleService = paddleService;
-        _webhookService = webhookService;
-        _userManager = userManager;
+        _webhookQueue = webhookQueue;
+        _webhookEventRepo = webhookEventRepo;
         _logger = logger;
     }
 
@@ -71,11 +73,18 @@ public class PaddleWebhookController : ControllerBase
             _logger.LogInformation("Received Paddle webhook: {EventType} - {EventId}", 
                 webhookEvent.EventType, webhookEvent.EventId);
 
-            // Process webhook asynchronously (fire and forget pattern for production)
-            // For now, we'll await it for better error handling
-            await _webhookService.HandleWebhookEventAsync(webhookEvent);
+            // Check if webhook event has already been processed (idempotency)
+            if (await _webhookEventRepo.IsEventProcessedAsync(webhookEvent.EventId))
+            {
+                _logger.LogInformation("Webhook event {EventId} already processed, skipping", webhookEvent.EventId);
+                return Ok(new { message = "Webhook event already processed" });
+            }
 
-            return Ok(new { message = "Webhook processed successfully" });
+            // Queue webhook for async processing
+            await _webhookQueue.QueueWebhookEventAsync(webhookEvent);
+
+            _logger.LogInformation("Webhook event {EventId} queued for processing", webhookEvent.EventId);
+            return Ok(new { message = "Webhook queued for processing" });
         }
         catch (Exception ex)
         {

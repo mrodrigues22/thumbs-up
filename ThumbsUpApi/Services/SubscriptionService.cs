@@ -276,14 +276,18 @@ public class SubscriptionService : ISubscriptionService
             throw new Exception("Invalid price selection");
         }
 
+        // Set default URLs if not provided
+        var successUrl = request.SuccessUrl ?? $"{_configuration["App:BaseUrl"]}/subscription/success";
+        var cancelUrl = request.CancelUrl ?? $"{_configuration["App:BaseUrl"]}/pricing";
+
         // Create checkout session
         try
         {
             return await _paddleService.CreateCheckoutSessionAsync(
                 user.PaddleCustomerId,
                 request.PriceId,
-                request.SuccessUrl,
-                request.CancelUrl
+                successUrl,
+                cancelUrl
             );
         }
         catch (Exception ex)
@@ -429,8 +433,8 @@ public class SubscriptionService : ISubscriptionService
         subscription.PaddleSubscriptionId = data.Id;
         subscription.PaddleCustomerId = data.CustomerId;
         subscription.Status = MapSubscriptionStatus(data.Status);
-        subscription.CurrentPeriodStart = data.CurrentBillingPeriod_StartsAt;
-        subscription.CurrentPeriodEnd = data.CurrentBillingPeriod_EndsAt;
+        subscription.CurrentPeriodStart = data.CurrentBillingPeriod?.StartsAt;
+        subscription.CurrentPeriodEnd = data.CurrentBillingPeriod?.EndsAt;
         subscription.CancelledAt = data.CanceledAt;
         subscription.PausedAt = data.PausedAt;
         
@@ -488,6 +492,10 @@ public class SubscriptionService : ISubscriptionService
             "failed" => TransactionStatus.Failed,
             "refunded" => TransactionStatus.Refunded,
             "pending" => TransactionStatus.Pending,
+            "billed" => TransactionStatus.Billed,
+            "canceled" => TransactionStatus.Canceled,
+            "cancelled" => TransactionStatus.Canceled,
+            "ready" => TransactionStatus.Ready,
             _ => TransactionStatus.Pending
         };
     }

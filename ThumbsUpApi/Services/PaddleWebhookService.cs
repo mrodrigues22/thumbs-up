@@ -9,15 +9,18 @@ namespace ThumbsUpApi.Services;
 public class PaddleWebhookService
 {
     private readonly ISubscriptionService _subscriptionService;
+    private readonly IWebhookEventRepository _webhookEventRepo;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<PaddleWebhookService> _logger;
 
     public PaddleWebhookService(
         ISubscriptionService subscriptionService,
+        IWebhookEventRepository webhookEventRepo,
         UserManager<ApplicationUser> userManager,
         ILogger<PaddleWebhookService> logger)
     {
         _subscriptionService = subscriptionService;
+        _webhookEventRepo = webhookEventRepo;
         _userManager = userManager;
         _logger = logger;
     }
@@ -64,10 +67,23 @@ public class PaddleWebhookService
                     await HandleTransactionFailedAsync(webhookEvent.Data);
                     break;
 
+                case "customer.updated":
+                    await HandleCustomerUpdatedAsync(webhookEvent.Data);
+                    break;
+
                 default:
                     _logger.LogWarning("Unhandled webhook event type: {EventType}", webhookEvent.EventType);
                     break;
             }
+
+            // Mark event as processed after successful handling
+            await _webhookEventRepo.MarkEventAsProcessedAsync(
+                webhookEvent.EventId,
+                webhookEvent.EventType,
+                webhookEvent.OccurredAt,
+                webhookEvent.Data.SubscriptionId ?? webhookEvent.Data.Id,
+                webhookEvent.Data.CustomerId
+            );
         }
         catch (Exception ex)
         {
@@ -165,6 +181,31 @@ public class PaddleWebhookService
 
         await _subscriptionService.RecordTransactionAsync(userId, data);
         _logger.LogWarning("Transaction failed for user {UserId}: {TransactionId}", userId, data.Id);
+    }
+
+    private async Task HandleCustomerUpdatedAsync(PaddleEventData data)
+    {
+        if (string.IsNullOrEmpty(data.Id))
+            return;
+
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.PaddleCustomerId == data.Id);
+        
+        if (user == null)
+        {
+            _logger.LogWarning("Could not find user for Paddle customer: {CustomerId}", data.Id);
+            return;
+        }
+
+        // Update user email if changed
+        if (!string.IsNullOrEmpty(data.Customer?.Email) && user.Email != data.Customer.Email)
+        {
+            _logger.LogInformation("Updating email for user {UserId} from {OldEmail} to {NewEmail}",
+                user.Id, user.Email, data.Customer.Email);
+            user.Email = data.Customer.Email;
+            user.NormalizedEmail = data.Customer.Email.ToUpper();
+            await _userManager.UpdateAsync(user);
+        }
     }
 
     private async Task<string?> FindUserIdByPaddleCustomerIdAsync(string paddleCustomerId)

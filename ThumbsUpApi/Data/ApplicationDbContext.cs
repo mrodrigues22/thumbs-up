@@ -19,6 +19,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ClientSummary> ClientSummaries { get; set; }
     public DbSet<Subscription> Subscriptions { get; set; }
     public DbSet<Transaction> Transactions { get; set; }
+    public DbSet<ProcessedWebhookEvent> ProcessedWebhookEvents { get; set; }
     
     protected override void OnModelCreating(ModelBuilder builder)
     {

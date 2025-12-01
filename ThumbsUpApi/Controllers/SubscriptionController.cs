@@ -139,6 +139,34 @@ public class SubscriptionController : ControllerBase
     }
 
     /// <summary>
+    /// Upgrade or change subscription plan
+    /// </summary>
+    [HttpPost("upgrade")]
+    public async Task<ActionResult<CheckoutSessionResponse>> UpgradeSubscription([FromBody] CreateCheckoutRequest request)
+    {
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+                return Unauthorized();
+
+            if (request == null || string.IsNullOrEmpty(request.PriceId))
+            {
+                _logger.LogWarning("Invalid upgrade request: missing price ID");
+                return BadRequest(new { message = "Invalid request: price ID is required" });
+            }
+
+            var checkoutSession = await _subscriptionService.CreateCheckoutAsync(userId, request);
+            return Ok(checkoutSession);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error upgrading subscription");
+            return StatusCode(500, new { message = "Error processing subscription upgrade" });
+        }
+    }
+
+    /// <summary>
     /// Cancel current subscription
     /// </summary>
     [HttpPost("cancel")]
