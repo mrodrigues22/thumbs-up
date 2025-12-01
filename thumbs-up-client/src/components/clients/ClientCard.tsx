@@ -9,18 +9,18 @@ import type { Client } from '../../shared/types';
 
 interface ClientCardProps {
   client: Client;
+  onSelectForAi?: () => void;
 }
 
-export function ClientCard({ client }: ClientCardProps) {
+export function ClientCard({ client, onSelectForAi }: ClientCardProps) {
   const navigate = useNavigate();
 
   const handleClick = () => {
     navigate(`/clients/${client.id}`);
   };
 
-  // Determine what to display as the primary name
-  const displayName = client.name || client.email;
-  const showEmail = !client.name;
+  // Determine what to display
+  const displayName = client.name;
   const showCompany = !!client.companyName;
 
   return (
@@ -51,14 +51,12 @@ export function ClientCard({ client }: ClientCardProps) {
           <h3 className="text-lg font-semibold text-gray-900 truncate dark:text-gray-100">
             {displayName}
           </h3>
+          <p className="text-sm text-gray-500 truncate">
+            {client.email}
+          </p>
           {showCompany && (
             <p className="text-sm text-gray-600 truncate dark:text-gray-300">
               {client.companyName}
-            </p>
-          )}
-          {showEmail && showCompany && (
-            <p className="text-sm text-gray-500 truncate">
-              {client.email}
             </p>
           )}
           <p className="text-sm text-gray-500 mt-1">
@@ -66,8 +64,21 @@ export function ClientCard({ client }: ClientCardProps) {
           </p>
         </div>
 
-        {/* Arrow indicator */}
-        <div className="flex-shrink-0">
+        {/* Actions */}
+        <div className="flex-shrink-0 flex flex-col items-end gap-2">
+          {onSelectForAi && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectForAi();
+              }}
+              className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100"
+            >
+              <span className="mr-1">★</span>
+              AI summary
+            </button>
+          )}
           <svg
             className="w-5 h-5 text-gray-400"
             fill="none"

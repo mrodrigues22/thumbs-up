@@ -1,10 +1,10 @@
 namespace ThumbsUpApi.Services;
 
-public class MockEmailService : IEmailService
+public class EmailService : IEmailService
 {
-    private readonly ILogger<MockEmailService> _logger;
+    private readonly ILogger<EmailService> _logger;
     
-    public MockEmailService(ILogger<MockEmailService> logger)
+    public EmailService(ILogger<EmailService> logger)
     {
         _logger = logger;
     }

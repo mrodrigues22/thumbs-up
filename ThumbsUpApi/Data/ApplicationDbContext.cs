@@ -15,6 +15,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<MediaFile> MediaFiles { get; set; }
     public DbSet<Review> Reviews { get; set; }
     public DbSet<Client> Clients { get; set; }
+    public DbSet<ContentFeature> ContentFeatures { get; set; }
+    public DbSet<ClientSummary> ClientSummaries { get; set; }
     
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -76,6 +78,28 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.SubmissionId).IsUnique();
+        });
+
+        // Configure ContentFeature
+        builder.Entity<ContentFeature>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.SubmissionId).IsUnique(); // One feature aggregate per submission for now
+            entity.HasOne(e => e.Submission)
+                .WithOne(s => s.ContentFeature)
+                .HasForeignKey<ContentFeature>(e => e.SubmissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure ClientSummary
+        builder.Entity<ClientSummary>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ClientId).IsUnique(); // Single cached summary per client
+            entity.HasOne(e => e.Client)
+                .WithMany()
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

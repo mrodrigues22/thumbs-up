@@ -27,7 +27,7 @@ export function ClientSelector({
     const searchLower = searchTerm.toLowerCase();
     return (
       client.email.toLowerCase().includes(searchLower) ||
-      client.name?.toLowerCase().includes(searchLower) ||
+      client.name.toLowerCase().includes(searchLower) ||
       client.companyName?.toLowerCase().includes(searchLower)
     );
   });
@@ -74,10 +74,10 @@ export function ClientSelector({
           {selectedClient ? (
             <div>
               <div className="font-medium text-gray-900 truncate dark:text-gray-100">
-                {selectedClient.name || selectedClient.email}
+                {selectedClient.name}
               </div>
               <div className="text-sm text-gray-500 truncate dark:text-gray-300">
-                {selectedClient.name ? selectedClient.email : ''}
+                {selectedClient.email}
               </div>
             </div>
           ) : (
@@ -145,10 +145,10 @@ export function ClientSelector({
                 >
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-gray-900 truncate dark:text-gray-100">
-                      {client.name || client.email}
+                      {client.name}
                     </div>
                     <div className="text-sm text-gray-600 truncate dark:text-gray-400">
-                      {client.name && client.email}
+                      {client.email}
                     </div>
                     {client.companyName && (
                       <div className="text-xs text-gray-500 truncate">

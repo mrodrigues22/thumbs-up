@@ -12,9 +12,10 @@ interface ClientsListProps {
   loading: boolean;
   searchTerm: string;
   onAddClient: () => void;
+  onSelectClient?: (client: Client | null) => void;
 }
 
-export function ClientsList({ clients, loading, searchTerm, onAddClient }: ClientsListProps) {
+export function ClientsList({ clients, loading, searchTerm, onAddClient, onSelectClient }: ClientsListProps) {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -60,7 +61,11 @@ export function ClientsList({ clients, loading, searchTerm, onAddClient }: Clien
   return (
     <div className="grid gap-4">
       {clients.map((client) => (
-        <ClientCard key={client.id} client={client} />
+        <ClientCard
+          key={client.id}
+          client={client}
+          onSelectForAi={() => onSelectClient?.(client)}
+        />
       ))}
     </div>
   );

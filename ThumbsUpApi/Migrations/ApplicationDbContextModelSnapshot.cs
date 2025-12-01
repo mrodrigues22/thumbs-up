@@ -257,6 +257,7 @@ namespace ThumbsUpApi.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("ProfilePictureUrl")
@@ -270,6 +271,65 @@ namespace ThumbsUpApi.Migrations
                         .IsUnique();
 
                     b.ToTable("Clients");
+                });
+
+            modelBuilder.Entity("ThumbsUpApi.Models.ClientSummary", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SummaryText")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId")
+                        .IsUnique();
+
+                    b.ToTable("ClientSummaries");
+                });
+
+            modelBuilder.Entity("ThumbsUpApi.Models.ContentFeature", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AnalysisStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ExtractedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FailureReason")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastAnalyzedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OcrText")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ThemeTagsJson")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubmissionId")
+                        .IsUnique();
+
+                    b.ToTable("ContentFeatures");
                 });
 
             modelBuilder.Entity("ThumbsUpApi.Models.MediaFile", b =>
@@ -290,6 +350,9 @@ namespace ThumbsUpApi.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<int>("FileType")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Order")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("SubmissionId")
@@ -453,6 +516,28 @@ namespace ThumbsUpApi.Migrations
                     b.Navigation("CreatedBy");
                 });
 
+            modelBuilder.Entity("ThumbsUpApi.Models.ClientSummary", b =>
+                {
+                    b.HasOne("ThumbsUpApi.Models.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+                });
+
+            modelBuilder.Entity("ThumbsUpApi.Models.ContentFeature", b =>
+                {
+                    b.HasOne("ThumbsUpApi.Models.Submission", "Submission")
+                        .WithOne("ContentFeature")
+                        .HasForeignKey("ThumbsUpApi.Models.ContentFeature", "SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Submission");
+                });
+
             modelBuilder.Entity("ThumbsUpApi.Models.MediaFile", b =>
                 {
                     b.HasOne("ThumbsUpApi.Models.Submission", "Submission")
@@ -505,6 +590,8 @@ namespace ThumbsUpApi.Migrations
 
             modelBuilder.Entity("ThumbsUpApi.Models.Submission", b =>
                 {
+                    b.Navigation("ContentFeature");
+
                     b.Navigation("MediaFiles");
 
                     b.Navigation("Review");

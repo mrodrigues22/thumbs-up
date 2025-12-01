@@ -1,24 +1,25 @@
+using ThumbsUpApi.Configuration;
+
 namespace ThumbsUpApi.Services;
 
 public class LocalFileStorageService : IFileStorageService
 {
     private readonly IWebHostEnvironment _environment;
-    private readonly IConfiguration _configuration;
+    private readonly FileStorageOptions _options;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly string _uploadPath;
     
     public LocalFileStorageService(
         IWebHostEnvironment environment, 
-        IConfiguration configuration,
+        Microsoft.Extensions.Options.IOptions<FileStorageOptions> options,
         IHttpContextAccessor httpContextAccessor)
     {
         _environment = environment;
-        _configuration = configuration;
+        _options = options.Value;
         _httpContextAccessor = httpContextAccessor;
         
-        // Get upload path from configuration or use default
-        var configPath = _configuration["FileStorage:LocalPath"] ?? "wwwroot/uploads";
-        _uploadPath = Path.Combine(_environment.ContentRootPath, configPath);
+        // Get upload path from options
+        _uploadPath = Path.Combine(_environment.ContentRootPath, _options.LocalPath);
         
         // Ensure upload directory exists
         if (!Directory.Exists(_uploadPath))

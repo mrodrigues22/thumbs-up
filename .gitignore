@@ -89,3 +89,5 @@ wwwroot/uploads/
 logs/
 *.log
 ThumbsUpApi/wwwroot/uploads/*
+ThumbsUpApi/appsettings.json
+ThumbsUpApi/appsettings.Development.json

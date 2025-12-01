@@ -20,12 +20,40 @@ export const MediaFileType = {
 
 export type MediaFileType = typeof MediaFileType[keyof typeof MediaFileType];
 
+export const ContentFeatureStatus = {
+  Pending: 'Pending',
+  Completed: 'Completed',
+  NoSignals: 'NoSignals',
+  NoImages: 'NoImages',
+  Failed: 'Failed',
+} as const;
+
+export type ContentFeatureStatus = typeof ContentFeatureStatus[keyof typeof ContentFeatureStatus];
+
 export const ReviewStatus = {
   Approved: 0,
   Rejected: 1,
 } as const;
 
 export type ReviewStatus = typeof ReviewStatus[keyof typeof ReviewStatus];
+
+export const SummaryDataStatus = {
+  PendingAnalysis: 'PendingAnalysis',
+  InsufficientHistory: 'InsufficientHistory',
+  Ready: 'Ready',
+  Partial: 'Partial',
+} as const;
+
+export type SummaryDataStatus = typeof SummaryDataStatus[keyof typeof SummaryDataStatus];
+
+export const ApprovalPredictionStatus = {
+  PendingSignals: 'PendingSignals',
+  Ready: 'Ready',
+  MissingHistory: 'MissingHistory',
+  Error: 'Error',
+} as const;
+
+export type ApprovalPredictionStatus = typeof ApprovalPredictionStatus[keyof typeof ApprovalPredictionStatus];
 
 export const UserRole = {
   User: 'User',
@@ -91,6 +119,7 @@ export interface MediaFileResponse {
   fileType: MediaFileType;
   fileSize: number;
   uploadedAt: string;
+  order: number;
 }
 
 export interface MediaFileUpload {
@@ -128,7 +157,7 @@ export interface ValidateAccessResponse {
 export interface Client {
   id: string;
   email: string;
-  name?: string;
+  name: string;
   companyName?: string;
   profilePictureUrl?: string;
   createdAt: string;
@@ -138,7 +167,7 @@ export interface Client {
 
 export interface CreateClientRequest {
   email: string;
-  name?: string;
+  name: string;
   companyName?: string;
 }
 
@@ -154,6 +183,7 @@ export interface SubmissionResponse {
   clientId?: string;
   clientEmail: string;
   clientName?: string;
+  clientCompanyName?: string;
   accessToken: string;
   accessPassword?: string;
   message?: string;
@@ -164,6 +194,8 @@ export interface SubmissionResponse {
   mediaFiles: MediaFileResponse[];
   review?: ReviewResponse;
   createdBy?: string;
+  contentFeature?: ContentFeatureResponse;
+  contentSummary?: string;
 }
 
 export interface CreateSubmissionRequest {
@@ -185,13 +217,62 @@ export interface UpdateSubmissionRequest {
   status?: SubmissionStatus;
 }
 
+// ===== AI Insights Types =====
+
+export interface ClientSummaryResponse {
+  clientId: string;
+  stylePreferences: string[];
+  recurringPositives: string[];
+  rejectionReasons: string[];
+  approvedCount: number;
+  rejectedCount: number;
+  generatedAt: string;
+  dataStatus: SummaryDataStatus;
+  missingSignals: string[];
+  pendingAnalysisCount: number;
+  featureCoverageCount: number;
+}
+
+export interface ApprovalPredictionRequest {
+  clientId: string;
+  submissionId: string;
+}
+
+export interface ApprovalPredictionResponse {
+  clientId: string;
+  submissionId: string;
+  probability?: number | null;
+  rationale: string;
+  status: ApprovalPredictionStatus;
+  statusMessage: string;
+}
+
+export interface ThemeInsightsResponse {
+  subjects: string[];
+  vibes: string[];
+  notableElements: string[];
+  colors: string[];
+  keywords: string[];
+}
+
+export interface ContentFeatureResponse {
+  ocrText?: string | null;
+  tags: string[];
+  themeInsights?: ThemeInsightsResponse | null;
+  extractedAt?: string | null;
+  lastAnalyzedAt?: string | null;
+  // Backend may still return legacy numeric enum codes; accept number for compatibility
+  analysisStatus?: ContentFeatureStatus | number | null;
+  failureReason?: string | null;
+}
+
 // ===== Filter Types =====
 export interface SubmissionFilters {
   status?: SubmissionStatus;
   searchTerm?: string;
   dateFrom?: string;
   dateTo?: string;
-  sortBy?: 'createdAt' | 'clientEmail' | 'status';
+  sortBy?: 'createdAt' | 'client' | 'status';
   sortOrder?: 'asc' | 'desc';
 }
 

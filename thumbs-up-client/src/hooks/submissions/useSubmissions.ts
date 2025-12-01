@@ -35,7 +35,7 @@ export const useSubmissions = (options: UseSubmissionsOptions = {}): UseSubmissi
   const [error, setError] = useState<ApiError | null>(null);
 
   /**
-   * Fetch submissions from API
+   * Fetch submissions from API with filters
    */
   const fetchSubmissions = useCallback(async () => {
     setIsLoading(true);
@@ -43,7 +43,7 @@ export const useSubmissions = (options: UseSubmissionsOptions = {}): UseSubmissi
     setError(null);
 
     try {
-      const data = await submissionService.getSubmissions();
+      const data = await submissionService.getSubmissions(filters);
       setSubmissions(data);
     } catch (err) {
       setIsError(true);
@@ -54,69 +54,12 @@ export const useSubmissions = (options: UseSubmissionsOptions = {}): UseSubmissi
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  /**
-   * Apply client-side filters to submissions
-   */
-  const applyFilters = useCallback((submissions: SubmissionResponse[]): SubmissionResponse[] => {
-    if (!filters) return submissions;
-
-    let filtered = [...submissions];
-
-    // Filter by status
-    if (filters.status !== undefined) {
-      filtered = filtered.filter(sub => sub.status === filters.status);
-    }
-
-    // Filter by search term (searches in client email)
-    if (filters.searchTerm) {
-      const searchLower = filters.searchTerm.toLowerCase();
-      filtered = filtered.filter(sub =>
-        sub.clientEmail.toLowerCase().includes(searchLower) ||
-        sub.message?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Filter by date range
-    if (filters.dateFrom) {
-      filtered = filtered.filter(sub =>
-        new Date(sub.createdAt) >= new Date(filters.dateFrom!)
-      );
-    }
-    if (filters.dateTo) {
-      filtered = filtered.filter(sub =>
-        new Date(sub.createdAt) <= new Date(filters.dateTo!)
-      );
-    }
-
-    // Sort submissions
-    if (filters.sortBy) {
-      filtered.sort((a, b) => {
-        let comparison = 0;
-        
-        switch (filters.sortBy) {
-          case 'createdAt':
-            comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-            break;
-          case 'clientEmail':
-            comparison = a.clientEmail.localeCompare(b.clientEmail);
-            break;
-          case 'status':
-            comparison = a.status - b.status;
-            break;
-        }
-        
-        return filters.sortOrder === 'desc' ? -comparison : comparison;
-      });
-    }
-
-    return filtered;
   }, [filters]);
 
-  const filteredSubmissions = applyFilters(submissions);
+  // Filtering now happens on the backend, so filteredSubmissions is the same as submissions
+  const filteredSubmissions = submissions;
 
-  // Auto-fetch on mount if enabled
+  // Auto-fetch on mount or when filters change
   useEffect(() => {
     if (autoFetch) {
       fetchSubmissions();

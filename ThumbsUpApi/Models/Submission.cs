@@ -40,6 +40,7 @@ public class Submission
     public Client? Client { get; set; }
     public ICollection<MediaFile> MediaFiles { get; set; } = new List<MediaFile>();
     public Review? Review { get; set; }
+    public ContentFeature? ContentFeature { get; set; }
 }
 
 public enum SubmissionStatus

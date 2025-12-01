@@ -3,18 +3,24 @@
  * Manage client contacts with full CRUD operations
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Layout } from '../components/layout';
 import { clientService } from '../services/clientService';
-import { Button, Card, ErrorMessage, Modal, Input } from '../components/common';
+import { aiService } from '../services/aiService';
+import { Button, Card, ErrorMessage, Modal, Input, LoadingSpinner } from '../components/common';
 import { ClientsList } from '../components/clients';
-import type { Client, UpdateClientRequest } from '../shared/types';
+import type { Client, UpdateClientRequest, ClientSummaryResponse } from '../shared/types';
+import { SummaryDataStatus } from '../shared/types';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [aiSummary, setAiSummary] = useState<ClientSummaryResponse | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState({
@@ -23,6 +29,7 @@ export default function ClientsPage() {
     companyName: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const summaryAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     loadClients();
@@ -42,12 +49,48 @@ export default function ClientsPage() {
     }
   };
 
+  useEffect(() => {
+    return () => {
+      summaryAbortRef.current?.abort();
+    };
+  }, []);
+
+  const loadClientSummary = async (client: Client) => {
+    summaryAbortRef.current?.abort();
+    const controller = new AbortController();
+    summaryAbortRef.current = controller;
+
+    try {
+      setAiLoading(true);
+      setAiError(null);
+      const summary = await aiService.getClientSummary(client.id, controller.signal);
+      if (controller.signal.aborted) {
+        return;
+      }
+      setAiSummary(summary);
+    } catch (err) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      console.error('Error loading AI summary:', err);
+      setAiError('Failed to load AI summary.');
+      setAiSummary(null);
+    } finally {
+      if (!controller.signal.aborted) {
+        setAiLoading(false);
+      }
+      if (summaryAbortRef.current === controller) {
+        summaryAbortRef.current = null;
+      }
+    }
+  };
+
   const handleOpenModal = (client?: Client) => {
     if (client) {
       setEditingClient(client);
       setFormData({
         email: client.email,
-        name: client.name || '',
+        name: client.name,
         companyName: client.companyName || '',
       });
     } else {
@@ -59,6 +102,15 @@ export default function ClientsPage() {
       });
     }
     setIsModalOpen(true);
+  };
+
+  const handleSelectClient = (client: Client | null) => {
+    setSelectedClient(client);
+    setAiSummary(null);
+    setAiError(null);
+    if (client) {
+      void loadClientSummary(client);
+    }
   };
 
   const handleCloseModal = () => {
@@ -101,7 +153,7 @@ export default function ClientsPage() {
     const search = searchTerm.toLowerCase();
     return (
       client.email.toLowerCase().includes(search) ||
-      client.name?.toLowerCase().includes(search) ||
+      client.name.toLowerCase().includes(search) ||
       client.companyName?.toLowerCase().includes(search)
     );
   });
@@ -172,19 +224,134 @@ export default function ClientsPage() {
           </div>
         </Card>
 
-        {/* Clients List */}
-        <ClientsList
-          clients={sortedClients}
-          loading={loading}
-          searchTerm={searchTerm}
-          onAddClient={() => handleOpenModal()}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2">
+            <ClientsList
+              clients={sortedClients}
+              loading={loading}
+              searchTerm={searchTerm}
+              onAddClient={() => handleOpenModal()}
+              onSelectClient={handleSelectClient}
+            />
+          </div>
+
+          <div className="lg:col-span-1">
+            <Card className="h-full">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">AI Client Summary</h2>
+              <p className="text-xs text-gray-500 mb-3">
+                Uses your past approvals/rejections and content to describe this client&apos;s preferences.
+              </p>
+
+              {!selectedClient && (
+                <p className="text-sm text-gray-500">
+                  Select a client from the list to see their AI summary.
+                </p>
+              )}
+
+              {selectedClient && (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-gray-900">
+                    {selectedClient.name}
+                  </p>
+
+                  {aiLoading && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <LoadingSpinner size="small" />
+                      <span>Analyzing client history...</span>
+                    </div>
+                  )}
+
+                  {aiError && !aiLoading && (
+                    <ErrorMessage error={aiError} />
+                  )}
+
+                  {aiSummary && !aiLoading && !aiError && (
+                    <div className="border-t pt-3 mt-2 space-y-4">
+                      {/* Stats */}
+                      <div className="flex gap-4 text-xs">
+                        <div className="flex items-center gap-1">
+                          <span className="font-semibold text-green-600">{aiSummary.approvedCount}</span>
+                          <span className="text-gray-500">approved</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="font-semibold text-red-600">{aiSummary.rejectedCount}</span>
+                          <span className="text-gray-500">rejected</span>
+                        </div>
+                      </div>
+
+                      {aiSummary.dataStatus !== SummaryDataStatus.Ready && (
+                        <p className="text-xs text-amber-600">
+                          {aiSummary.missingSignals[0] ?? 'Insights will appear once this client has more analyzed submissions.'}
+                        </p>
+                      )}
+
+                      {/* Style Preferences */}
+                      {aiSummary.stylePreferences.length > 0 && (
+                        <div>
+                          <h3 className="text-xs font-semibold text-purple-700 uppercase tracking-wide mb-1.5">
+                            Style Preferences
+                          </h3>
+                          <ul className="space-y-1">
+                            {aiSummary.stylePreferences.map((item, idx) => (
+                              <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                                <span className="text-purple-500 mt-0.5">•</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Recurring Positives */}
+                      {aiSummary.recurringPositives.length > 0 && (
+                        <div>
+                          <h3 className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1.5">
+                            Recurring Positives
+                          </h3>
+                          <ul className="space-y-1">
+                            {aiSummary.recurringPositives.map((item, idx) => (
+                              <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                                <span className="text-green-500 mt-0.5">✓</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Rejection Reasons */}
+                      {aiSummary.rejectionReasons.length > 0 && (
+                        <div>
+                          <h3 className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-1.5">
+                            Common Rejections
+                          </h3>
+                          <ul className="space-y-1">
+                            {aiSummary.rejectionReasons.map((item, idx) => (
+                              <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                                <span className="text-red-500 mt-0.5">✗</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <p className="text-xs text-gray-400 pt-2 border-t">
+                        Updated {new Date(aiSummary.generatedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
 
         {/* Create/Edit Modal */}
         <Modal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
-          title={editingClient ? 'Edit Client' : 'Add New Client'}
+          title={editingClient ? 'Edit client' : 'Add new client'}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
@@ -201,6 +368,7 @@ export default function ClientsPage() {
               label="Name"
               name="name"
               type="text"
+              required
               value={formData.name}
               onChange={(value) => setFormData({ ...formData, name: value })}
               placeholder="John Doe"

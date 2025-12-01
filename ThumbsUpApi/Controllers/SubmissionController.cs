@@ -6,6 +6,8 @@ using ThumbsUpApi.Models;
 using ThumbsUpApi.Services;
 using ThumbsUpApi.Repositories;
 using ThumbsUpApi.Mappers;
+using ThumbsUpApi.Interfaces;
+using ThumbsUpApi.Helpers;
 
 namespace ThumbsUpApi.Controllers;
 
@@ -21,6 +23,8 @@ public class SubmissionController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly ILogger<SubmissionController> _logger;
     private readonly SubmissionMapper _mapper;
+    private readonly ThumbsUpApi.Services.ISubmissionAnalysisQueue _analysisQueue;
+    private readonly IContentSummaryService _contentSummaryService;
     
     public SubmissionController(
         ISubmissionRepository submissionRepository,
@@ -29,7 +33,9 @@ public class SubmissionController : ControllerBase
         IEmailService emailService,
         IConfiguration configuration,
         ILogger<SubmissionController> logger,
-        SubmissionMapper mapper)
+        SubmissionMapper mapper,
+        ThumbsUpApi.Services.ISubmissionAnalysisQueue analysisQueue,
+        IContentSummaryService contentSummaryService)
     {
         _submissionRepository = submissionRepository;
         _clientRepository = clientRepository;
@@ -38,6 +44,8 @@ public class SubmissionController : ControllerBase
         _configuration = configuration;
         _logger = logger;
         _mapper = mapper;
+        _analysisQueue = analysisQueue;
+        _contentSummaryService = contentSummaryService;
     }
     
     [HttpPost]
@@ -154,6 +162,7 @@ public class SubmissionController : ControllerBase
         
         // Upload files
         var mediaFiles = new List<MediaFile>();
+        int order = 0;
         foreach (var file in request.Files)
         {
             try
@@ -168,7 +177,8 @@ public class SubmissionController : ControllerBase
                     FilePath = filePath,
                     FileType = IsImageFile(file) ? MediaFileType.Image : MediaFileType.Video,
                     FileSize = file.Length,
-                    UploadedAt = DateTime.UtcNow
+                    UploadedAt = DateTime.UtcNow,
+                    Order = order++
                 };
                 
                 mediaFiles.Add(mediaFile);
@@ -183,6 +193,8 @@ public class SubmissionController : ControllerBase
         submission.MediaFiles = mediaFiles;
         
         await _submissionRepository.CreateAsync(submission);
+        // Enqueue AI analysis (images) in background
+        _analysisQueue.Enqueue(submission.Id);
         
         // Send email to client
         var reviewLink = $"{Request.Scheme}://{Request.Host}/review/{submission.AccessToken}";
@@ -197,18 +209,19 @@ public class SubmissionController : ControllerBase
         
         var response = _mapper.ToResponse(submission);
         response.AccessPassword = accessPassword;
+        response.ContentSummary = await _contentSummaryService.GenerateAsync(response);
         
         return Ok(response);
     }
     
     [HttpGet]
-    public async Task<IActionResult> GetSubmissions()
+    public async Task<IActionResult> GetSubmissions([FromQuery] SubmissionQueryObject query)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
         
-        var submissions = await _submissionRepository.GetAllByUserIdAsync(userId);
+        var submissions = await _submissionRepository.GetAllByUserIdAsync(userId, query);
         
         return Ok(submissions.Select(s => _mapper.ToResponse(s)));
     }
@@ -224,8 +237,29 @@ public class SubmissionController : ControllerBase
         
         if (submission == null)
             return NotFound();
-        
-        return Ok(_mapper.ToResponse(submission));
+        var response = _mapper.ToResponse(submission);
+        response.ContentSummary = await _contentSummaryService.GenerateAsync(response);
+        return Ok(response);
+    }
+
+    [HttpPost("{id}/reanalyze")]
+    public async Task<IActionResult> ReanalyzeSubmission(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        var submission = await _submissionRepository.GetByIdAsync(id, userId);
+        if (submission == null)
+        {
+            return NotFound();
+        }
+
+        _analysisQueue.Enqueue(id);
+        _logger.LogInformation("Reanalysis queued for submission {SubmissionId} by user {UserId}", id, userId);
+        return Accepted(new { message = "Creative insights refresh queued" });
     }
     
     [HttpDelete("{id}")]
@@ -267,9 +301,10 @@ public class SubmissionController : ControllerBase
     
     private string GenerateAccessPassword()
     {
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         var random = new Random();
         return new string(Enumerable.Repeat(chars, 6)
             .Select(s => s[random.Next(s.Length)]).ToArray());
     }
+
 }
