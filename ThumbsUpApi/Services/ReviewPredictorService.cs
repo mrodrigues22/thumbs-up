@@ -64,10 +64,8 @@ public class ReviewPredictorService : IReviewPredictorService
         var existing = await _summaryRepo.GetByClientIdAsync(clientId);
         var countsSignature = $"{approved}:{rejected}";
 
-        // If existing summary already encodes counts signature, parse and return cached result
-        var skipCache = _hostEnvironment.IsDevelopment();
 
-        if (!skipCache && existing != null && existing.SummaryText.Contains($"[counts:{countsSignature}]"))
+        if (existing != null && existing.SummaryText.Contains($"[counts:{countsSignature}]"))
         {
             _logger.LogInformation("Using cached summary for client {ClientId}", clientId);
             var cached = DeserializeSummary(existing.SummaryText);
