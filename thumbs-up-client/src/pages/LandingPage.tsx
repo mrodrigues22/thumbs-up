@@ -3,12 +3,14 @@
  * Marketing landing page for new users to learn about the app
  */
 
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { Button } from '../components/common';
 
 export default function LandingPage() {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -253,54 +255,108 @@ export default function LandingPage() {
         <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 dark:text-white mb-4">
           Simple, Transparent Pricing
         </h2>
-        <p className="text-center text-gray-600 dark:text-gray-300 mb-12">
+        <p className="text-center text-gray-600 dark:text-gray-300 mb-8">
           Choose the plan that works for you
         </p>
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        
+        {/* Billing Toggle */}
+        <div className="flex justify-center mb-12">
+          <div className="inline-flex items-center bg-white dark:bg-gray-800 rounded-lg p-1 shadow">
+            <button
+              onClick={() => setBillingPeriod('monthly')}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                billingPeriod === 'monthly'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingPeriod('yearly')}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                billingPeriod === 'yearly'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Yearly
+              <span className="ml-2 text-xs text-green-600 dark:text-green-400">
+                Save 17%
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {/* Starter Plan */}
           <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-lg border-2 border-gray-200 dark:border-gray-700">
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Starter</h3>
-            <div className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-              $9<span className="text-lg text-gray-600 dark:text-gray-400">/month</span>
+            <div className="mb-6">
+              <div className="text-4xl font-bold text-gray-900 dark:text-white">
+                ${billingPeriod === 'monthly' ? '12' : '10'}
+                <span className="text-lg text-gray-600 dark:text-gray-400">/month</span>
+              </div>
+              {billingPeriod === 'yearly' && (
+                <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                  Billed at $120/year
+                </p>
+              )}
             </div>
             <ul className="space-y-3 mb-8">
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Up to 20 submissions</span>
+                <span className="text-gray-600 dark:text-gray-300">20 submissions/month</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">10 clients</span>
+                <span className="text-gray-600 dark:text-gray-300">5GB storage</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">1GB storage</span>
+                <span className="text-gray-600 dark:text-gray-300">Up to 10 clients</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
                 <span className="text-gray-600 dark:text-gray-300">Email support</span>
               </li>
+              <li className="flex items-start">
+                <span className="text-green-500 mr-2">✓</span>
+                <span className="text-gray-600 dark:text-gray-300">14-day submission expiry</span>
+              </li>
             </ul>
             <Link to="/register">
-              <Button variant="primary" fullWidth>
+              <Button variant="secondary" fullWidth>
                 Get Started
               </Button>
             </Link>
           </div>
 
           {/* Pro Plan */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-xl border-2 border-blue-600 relative transform scale-105">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-xl border-2 border-blue-600 relative transform md:scale-105">
             <div className="absolute top-0 right-0 bg-blue-600 text-white px-3 py-1 text-sm font-semibold rounded-bl-lg rounded-tr-lg">
-              Popular
+              POPULAR
             </div>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Pro</h3>
-            <div className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-              $19<span className="text-lg text-gray-600 dark:text-gray-400">/month</span>
+            <div className="mb-6">
+              <div className="text-4xl font-bold text-gray-900 dark:text-white">
+                ${billingPeriod === 'monthly' ? '29' : '24'}
+                <span className="text-lg text-gray-600 dark:text-gray-400">/month</span>
+              </div>
+              {billingPeriod === 'yearly' && (
+                <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                  Billed at $290/year · Save $58
+                </p>
+              )}
             </div>
             <ul className="space-y-3 mb-8">
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Unlimited submissions</span>
+                <span className="text-gray-600 dark:text-gray-300">50 submissions/month</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-green-500 mr-2">✓</span>
+                <span className="text-gray-600 dark:text-gray-300">25GB storage</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
@@ -308,15 +364,23 @@ export default function LandingPage() {
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">10GB storage</span>
+                <span className="text-gray-600 dark:text-gray-300">
+                  <strong>AI-powered insights</strong>
+                </span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">AI insights & predictions</span>
+                <span className="text-gray-600 dark:text-gray-300">
+                  <strong>Approval predictions</strong>
+                </span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Priority support</span>
+                <span className="text-gray-600 dark:text-gray-300">30-day submission expiry</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-green-500 mr-2">✓</span>
+                <span className="text-gray-600 dark:text-gray-300">Priority email support</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
@@ -333,13 +397,23 @@ export default function LandingPage() {
           {/* Enterprise Plan */}
           <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-lg border-2 border-gray-200 dark:border-gray-700">
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Enterprise</h3>
-            <div className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-              $99<span className="text-lg text-gray-600 dark:text-gray-400">/month</span>
+            <div className="mb-6">
+              <div className="text-4xl font-bold text-gray-900 dark:text-white">
+                ${billingPeriod === 'monthly' ? '99' : '82'}
+                <span className="text-lg text-gray-600 dark:text-gray-400">/month</span>
+              </div>
+              {billingPeriod === 'yearly' && (
+                <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                  Billed at $990/year · Save $198
+                </p>
+              )}
             </div>
             <ul className="space-y-3 mb-8">
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Everything in Pro</span>
+                <span className="text-gray-600 dark:text-gray-300">
+                  <strong>Unlimited submissions</strong>
+                </span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
@@ -347,22 +421,38 @@ export default function LandingPage() {
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Team collaboration</span>
+                <span className="text-gray-600 dark:text-gray-300">Unlimited clients</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Advanced AI analytics</span>
+                <span className="text-gray-600 dark:text-gray-300">All AI features</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-600 dark:text-gray-300">Dedicated support</span>
+                <span className="text-gray-600 dark:text-gray-300">90-day submission expiry</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-green-500 mr-2">✓</span>
+                <span className="text-gray-600 dark:text-gray-300">Dedicated account manager</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-green-500 mr-2">✓</span>
+                <span className="text-gray-600 dark:text-gray-300">White-label options</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-green-500 mr-2">✓</span>
+                <span className="text-gray-600 dark:text-gray-300">API access</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-green-500 mr-2">✓</span>
+                <span className="text-gray-600 dark:text-gray-300">Advanced analytics</span>
               </li>
             </ul>
-            <Link to="/register">
+            <a href="mailto:sales@thumbsup.com">
               <Button variant="secondary" fullWidth>
                 Contact Sales
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </section>

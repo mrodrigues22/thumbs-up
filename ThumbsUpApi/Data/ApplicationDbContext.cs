@@ -17,6 +17,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Client> Clients { get; set; }
     public DbSet<ContentFeature> ContentFeatures { get; set; }
     public DbSet<ClientSummary> ClientSummaries { get; set; }
+    public DbSet<Subscription> Subscriptions { get; set; }
+    public DbSet<Transaction> Transactions { get; set; }
     
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -100,6 +102,43 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure Subscription
+        builder.Entity<Subscription>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.PaddleSubscriptionId).IsUnique();
+            entity.HasIndex(e => e.Status);
+            
+            entity.HasOne(e => e.User)
+                .WithOne(u => u.Subscription)
+                .HasForeignKey<Subscription>(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasMany(e => e.Transactions)
+                .WithOne(t => t.Subscription)
+                .HasForeignKey(t => t.SubscriptionId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configure Transaction
+        builder.Entity<Transaction>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.SubscriptionId);
+            entity.HasIndex(e => e.PaddleTransactionId).IsUnique();
+            entity.HasIndex(e => e.CreatedAt);
+            
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.Transactions)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.Property(e => e.Amount)
+                .HasPrecision(18, 2);
         });
     }
 }

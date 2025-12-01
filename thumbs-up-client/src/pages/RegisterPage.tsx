@@ -47,7 +47,7 @@ export default function RegisterPage() {
         formData.companyName
       );
       toast.success('Account created successfully!');
-      navigate('/dashboard');
+      navigate('/pricing');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Registration failed';
       setError(errorMessage);

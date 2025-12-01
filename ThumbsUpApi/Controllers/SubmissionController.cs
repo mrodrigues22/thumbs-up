@@ -25,6 +25,7 @@ public class SubmissionController : ControllerBase
     private readonly SubmissionMapper _mapper;
     private readonly ThumbsUpApi.Services.ISubmissionAnalysisQueue _analysisQueue;
     private readonly IContentSummaryService _contentSummaryService;
+    private readonly ISubscriptionService _subscriptionService;
     
     public SubmissionController(
         ISubmissionRepository submissionRepository,
@@ -35,7 +36,8 @@ public class SubmissionController : ControllerBase
         ILogger<SubmissionController> logger,
         SubmissionMapper mapper,
         ThumbsUpApi.Services.ISubmissionAnalysisQueue analysisQueue,
-        IContentSummaryService contentSummaryService)
+        IContentSummaryService contentSummaryService,
+        ISubscriptionService subscriptionService)
     {
         _submissionRepository = submissionRepository;
         _clientRepository = clientRepository;
@@ -46,6 +48,7 @@ public class SubmissionController : ControllerBase
         _mapper = mapper;
         _analysisQueue = analysisQueue;
         _contentSummaryService = contentSummaryService;
+        _subscriptionService = subscriptionService;
     }
     
     [HttpPost]
@@ -57,6 +60,19 @@ public class SubmissionController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
+        
+        // Check subscription quota
+        var hasQuota = await _subscriptionService.ValidateSubmissionQuotaAsync(userId);
+        if (!hasQuota)
+        {
+            var usage = await _subscriptionService.GetUsageStatsAsync(userId);
+            return StatusCode(402, new 
+            { 
+                message = "Submission quota exceeded. Please upgrade your subscription.",
+                usage,
+                upgradeUrl = "/subscription"
+            });
+        }
         
         // Validate that either ClientId or ClientEmail is provided
         if (!request.ClientId.HasValue && string.IsNullOrWhiteSpace(request.ClientEmail))

@@ -34,6 +34,9 @@ import ClientReviewPage from './pages/ClientReviewPage';
 import ClientsPage from './pages/ClientsPage';
 import ClientDetailPage from './pages/ClientDetailPage';
 import ProfilePage from './pages/ProfilePage';
+import PricingPage from './pages/PricingPage';
+import SubscriptionManagementPage from './pages/SubscriptionManagementPage';
+import SubscriptionSuccessPage from './pages/SubscriptionSuccessPage';
 
 function App() {
   const { loadAuth, isLoading } = useAuthStore((state) => ({
@@ -121,6 +124,26 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pricing"
+            element={<PricingPage />}
+          />
+          <Route
+            path="/subscription"
+            element={
+              <ProtectedRoute>
+                <SubscriptionManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subscription/success"
+            element={
+              <ProtectedRoute>
+                <SubscriptionSuccessPage />
               </ProtectedRoute>
             }
           />

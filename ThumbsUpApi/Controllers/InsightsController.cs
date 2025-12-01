@@ -16,12 +16,18 @@ public class InsightsController : ControllerBase
 {
     private readonly IReviewPredictorService _reviewPredictor;
     private readonly IApprovalPredictor _approvalPredictor;
+    private readonly ISubscriptionService _subscriptionService;
     private readonly ILogger<InsightsController> _logger;
 
-    public InsightsController(IReviewPredictorService reviewPredictor, IApprovalPredictor approvalPredictor, ILogger<InsightsController> logger)
+    public InsightsController(
+        IReviewPredictorService reviewPredictor, 
+        IApprovalPredictor approvalPredictor,
+        ISubscriptionService subscriptionService,
+        ILogger<InsightsController> logger)
     {
         _reviewPredictor = reviewPredictor;
         _approvalPredictor = approvalPredictor;
+        _subscriptionService = subscriptionService;
         _logger = logger;
     }
 
@@ -29,6 +35,18 @@ public class InsightsController : ControllerBase
     public async Task<ActionResult<ClientSummaryResponse>> GetClientSummary(Guid clientId, CancellationToken ct)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        
+        // Check AI feature access
+        var hasAccess = await _subscriptionService.CheckFeatureAccessAsync(userId, "ai_features");
+        if (!hasAccess)
+        {
+            return StatusCode(402, new 
+            { 
+                message = "AI features require a Pro or Enterprise subscription.",
+                feature = "ai_features",
+                upgradeUrl = "/subscription"
+            });
+        }
         
         try
         {
@@ -61,6 +79,18 @@ public class InsightsController : ControllerBase
             return BadRequest(ModelState);
             
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        
+        // Check AI feature access
+        var hasAccess = await _subscriptionService.CheckFeatureAccessAsync(userId, "ai_features");
+        if (!hasAccess)
+        {
+            return StatusCode(402, new 
+            { 
+                message = "AI features require a Pro or Enterprise subscription.",
+                feature = "ai_features",
+                upgradeUrl = "/subscription"
+            });
+        }
         
         try
         {

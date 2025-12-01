@@ -11,6 +11,7 @@ using ThumbsUpApi.Models;
 using ThumbsUpApi.Services;
 using ThumbsUpApi.Configuration;
 using ThumbsUpApi.Interfaces;
+using ThumbsUpApi.Repositories;
 using Polly;
 using Polly.Extensions.Http;
 
@@ -63,11 +64,13 @@ builder.Services.AddAuthorization();
 builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("Ai:OpenAi"));
 builder.Services.Configure<AiPredictorOptions>(builder.Configuration.GetSection("Ai:Predictor"));
 builder.Services.Configure<FileStorageOptions>(builder.Configuration.GetSection("FileStorage"));
+builder.Services.Configure<PaddleOptions>(builder.Configuration.GetSection("Paddle"));
 
 // Validate options on startup
 builder.Services.AddOptionsWithValidateOnStart<AiOptions>();
 builder.Services.AddOptionsWithValidateOnStart<AiPredictorOptions>();
 builder.Services.AddOptionsWithValidateOnStart<FileStorageOptions>();
+builder.Services.AddOptionsWithValidateOnStart<PaddleOptions>();
 
 // HttpClient factory with Polly retry policies
 builder.Services.AddHttpClient();
@@ -100,6 +103,8 @@ builder.Services.AddScoped<ThumbsUpApi.Repositories.IUserRepository, ThumbsUpApi
 builder.Services.AddScoped<ThumbsUpApi.Repositories.IClientRepository, ThumbsUpApi.Repositories.ClientRepository>();
 builder.Services.AddScoped<ThumbsUpApi.Repositories.IContentFeatureRepository, ThumbsUpApi.Repositories.ContentFeatureRepository>();
 builder.Services.AddScoped<ThumbsUpApi.Repositories.IClientSummaryRepository, ThumbsUpApi.Repositories.ClientSummaryRepository>();
+builder.Services.AddScoped<ISubscriptionRepository, ThumbsUpApi.Repositories.SubscriptionRepository>();
+builder.Services.AddScoped<ITransactionRepository, ThumbsUpApi.Repositories.TransactionRepository>();
 
 // Add Mappers
 builder.Services.AddScoped<ThumbsUpApi.Mappers.SubmissionMapper>();
@@ -128,6 +133,15 @@ else
 {
     builder.Services.AddScoped<IContentSummaryService, RuleBasedContentSummaryService>();
 }
+
+// Subscription Repositories
+builder.Services.AddScoped<ISubscriptionRepository, ThumbsUpApi.Repositories.SubscriptionRepository>();
+builder.Services.AddScoped<ITransactionRepository, ThumbsUpApi.Repositories.TransactionRepository>();
+
+// Subscription Services
+builder.Services.AddScoped<IPaddleService, PaddleService>();
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<PaddleWebhookService>();
 
 // Queue and background worker
 builder.Services.AddSingleton<ThumbsUpApi.Services.ISubmissionAnalysisQueue, ThumbsUpApi.Services.SubmissionAnalysisQueue>();
@@ -242,6 +256,9 @@ app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Add subscription middleware
+app.UseMiddleware<ThumbsUpApi.Middleware.SubscriptionMiddleware>();
 
 app.MapControllers();
 

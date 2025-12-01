@@ -10,6 +10,13 @@ public class ApplicationUser : IdentityUser
     public string? ProfilePictureUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
-    // Navigation property
+    // Subscription properties
+    public string? PaddleCustomerId { get; set; }
+    public Guid? SubscriptionId { get; set; }
+    public SubscriptionTier SubscriptionTier { get; set; } = SubscriptionTier.Starter;
+    
+    // Navigation properties
     public ICollection<Submission> Submissions { get; set; } = new List<Submission>();
+    public Subscription? Subscription { get; set; }
+    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
 }
