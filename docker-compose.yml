@@ -1,32 +1,32 @@
 services:
   api:
     build:
-      context: ./ThumbsUpApi
+      context: ./approoveit-api
       dockerfile: Dockerfile
     ports:
       - "5039:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=db;Database=thumbsup;Username=thumbsup_user;Password=thumbsup_pass
+      - ConnectionStrings__DefaultConnection=Host=db;Database=approoveit;Username=approoveit_user;Password=approoveit_pass
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      - ./ThumbsUpApi/wwwroot/uploads:/app/wwwroot/uploads
+      - ./approoveit-api/wwwroot/uploads:/app/wwwroot/uploads
 
   db:
     image: postgres:15
     environment:
-      POSTGRES_USER: thumbsup_user
-      POSTGRES_PASSWORD: thumbsup_pass
-      POSTGRES_DB: thumbsup
+      POSTGRES_USER: approoveit_user
+      POSTGRES_PASSWORD: approoveit_pass
+      POSTGRES_DB: approoveit
     ports:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./db/init-db:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U thumbsup_user -d thumbsup"]
+      test: ["CMD-SHELL", "pg_isready -U approoveit_user -d approoveit"]
       interval: 5s
       timeout: 5s
       retries: 12

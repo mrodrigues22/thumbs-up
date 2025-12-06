@@ -1,0 +1,6 @@
+@ApprooveItApi_HostAddress = http://localhost:5039
+
+GET {{ApprooveItApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

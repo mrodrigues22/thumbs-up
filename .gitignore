@@ -88,6 +88,6 @@ wwwroot/uploads/
 # Logs
 logs/
 *.log
-ThumbsUpApi/wwwroot/uploads/*
-ThumbsUpApi/appsettings.json
-ThumbsUpApi/appsettings.Development.json
+approoveit-api/wwwroot/uploads/*
+approoveit-api/appsettings.json
+approoveit-api/appsettings.Development.json

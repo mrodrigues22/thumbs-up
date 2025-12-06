@@ -1,4 +1,4 @@
-# Thumbs Up - Media Approval System
+# ApprooveIt - Media Approval System
 
 A full-stack web application for social media professionals to send images/videos to clients for approval.
 
@@ -46,13 +46,13 @@ A full-stack web application for social media professionals to send images/video
 
 1. Navigate to the API directory:
    ```bash
-   cd ThumbsUpApi
+   cd approoveit-api
    ```
 
 2. Update the connection string in `appsettings.json`:
    ```json
    "ConnectionStrings": {
-     "DefaultConnection": "Host=localhost;Database=thumbsup;Username=YOUR_USER;Password=YOUR_PASSWORD"
+     "DefaultConnection": "Host=localhost;Database=approoveit;Username=YOUR_USER;Password=YOUR_PASSWORD"
    }
    ```
 
@@ -73,7 +73,7 @@ A full-stack web application for social media professionals to send images/video
 
 1. Navigate to the client directory:
    ```bash
-   cd thumbs-up-client
+   cd approoveit-client
    ```
 
 2. Install dependencies:
@@ -154,9 +154,9 @@ Currently using mock email service (logs to console). To integrate Resend:
 
 ## Next Steps
 
-1. Install npm dependencies: `cd thumbs-up-client && npm install`
+1. Install npm dependencies: `cd approoveit-client && npm install`
 2. Set up PostgreSQL database
-3. Run EF migrations: `cd ThumbsUpApi && dotnet ef database update`
+3. Run EF migrations: `cd approoveit-api && dotnet ef database update`
 4. Start both backend and frontend
 5. Register a professional account
 6. Create your first submission!

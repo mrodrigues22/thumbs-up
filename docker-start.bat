@@ -1,5 +1,5 @@
 @echo off
-echo Starting Thumbs Up application with Docker...
+echo Starting ApprooveIt application with Docker...
 echo.
 
 REM Check if Docker is running
